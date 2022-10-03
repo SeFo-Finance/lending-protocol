@@ -3,3 +3,6 @@
 **/settings/Testnet.toml
 .requirements/
 history.txt
+
+.DS_Store
+node_modules
