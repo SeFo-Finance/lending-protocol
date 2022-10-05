@@ -5,8 +5,13 @@ authors = []
 telemetry = false
 cache_dir = "./.requirements"
 
-# [contracts.counter]
-# path = "contracts/counter.clar"
+[contracts.controller-trait]
+path = "contracts/traits/controller-trait.clar"
+[contracts.stoken-trait]
+path = "contracts/traits/stoken-trait.clar"
+[contracts.controller-g1]
+path = "contracts/controller-g1.clar"
+depends_on = ["controller-trait", "stoken-trait"]
 
 [repl.analysis]
 passes = ["check_checker"]
