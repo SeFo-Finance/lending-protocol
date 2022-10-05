@@ -27,7 +27,6 @@
 (define-map account-borrows principal {
     balance: uint, interest-index: uint
 })
-(define-map transfer-allowance {owner: principal, spender: principal} uint)
 
 
 ;; private functions
