@@ -11,8 +11,23 @@ path = "contracts/traits/controller-trait.clar"
 [contracts.interest-rate-trait]
 path = "contracts/traits/interest-rate-trait.clar"
 
+[contracts.sip-010-ft-trait]
+path = "contracts/traits/sip-010-ft-trait.clar"
+
 [contracts.stoken-trait]
 path = "contracts/traits/stoken-trait.clar"
+
+[contracts.scoin-trait]
+path = "contracts/traits/scoin-trait.clar"
+
+[contracts.stoken]
+path = "contracts/stoken.clar"
+
+[contracts.token]
+path = "contracts/token.clar"
+
+[contracts.controller-g1]
+path = "contracts/controller-g1.clar"
 
 [repl.analysis]
 passes = ["check_checker"]
