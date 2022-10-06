@@ -1,4 +1,4 @@
-
+(impl-trait .controller-trait.controller-trait)
 (use-trait st-trait .stoken-trait.stoken-trait)
 
 ;; UnitrollerAdminStorage variables
@@ -40,18 +40,22 @@
 ;; closeFactorMantissa must be strictly greater than this value
 (define-constant close-factor-min-mantissa (* 5 (pow u10 u16)))  ;; 0.05
 ;; closeFactorMantissa must not exceed this value
-(define-constant close-factor-max-mantissa (* 9 (pow u10 17)))  ;; 0.9
+(define-constant close-factor-max-mantissa (* 9 (pow u10 u17)))  ;; 0.9
 ;; No collateralFactorMantissa may exceed this value
-(define-constant collateral-factor-max-mantissa (* 9 (pow u10 17)))  ;; 0.9
+(define-constant collateral-factor-max-mantissa (* 9 (pow u10 u17)))  ;; 0.9
 ;; liquidationIncentiveMantissa must be no less than this value
-(define-constant liquidation-incentive-min-mantissa (pow u10 18)) ;; liquidationIncentiveMinMantissa = mantissaOne;
+(define-constant liquidation-incentive-min-mantissa (pow u10 u18)) ;; liquidationIncentiveMinMantissa = mantissaOne;
 ;; liquidationIncentiveMantissa must be no greater than this value
-(define-constant liquidation-incentive-mantissa (* 15 (pow u10 18)))  ;; 1.5
+(define-constant liquidation-incentive-mantissa (* 15 (pow u10 u18)))  ;; 1.5
+
+(define-constant exp-scale (pow u10 u18))
+(define-constant half-exp-scale (/ (var-get exp-scale) u2))
 
 (define-constant ERR_INVALID_ACCOUNT (err u1))
 (define-constant ERR_INVALID_STOKEN (err u2))
 (define-constant ERR_INVALID_ACCOUNT_OR_STOKEN (err u3))
 (define-constant ERR_REDEEM_TOKENS_ZERO (err u4))
+(define-constant ERR_UNKNOWN (err u5))
 
 (define-constant ERR_NO_ERROR u0)
 (define-constant ERR_UNAUTHORIZED u1)
@@ -443,7 +447,82 @@
 ;;          account liquidity in excess of collateral requirements,
 ;;          account shortfall below collateral requirements)
 (define-read-only (get-account-liquidity (account principal))
-  (ok (try! (get-hypothetical-account-liquidity-internal account  u0 u0)))
+  (ok (try! (get-hypothetical-account-liquidity-internal account none u0 u0)))
+)
+
+;; @notice Determine the current account liquidity wrt collateral requirements
+;; @return (possible error code,
+;;          account liquidity in excess of collateral requirements,
+;;          account shortfall below collateral requirements)
+(define-private (get-account-liquidity-internal (account principal))
+  (ok (try! (get-hypothetical-account-liquidity-internal account none u0 u0)))
+)
+
+;; @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
+;; @param cTokenModify The market to hypothetically redeem/borrow in
+;; @param account The account to determine liquidity for
+;; @param redeemTokens The number of tokens to hypothetically redeem
+;; @param borrowAmount The amount of underlying to hypothetically borrow
+;; @dev Note that we calculate the exchangeRateStored for each collateral cToken using stored data,
+;;  without calculating accumulated interest.
+;; @return (possible error code,
+;;          hypothetical account liquidity in excess of collateral requirements,
+;;          hypothetical account shortfall below collateral requirements)
+(define-private (get-hypothetical-account-liquidity-internal
+    (account principal)
+    (stoken-modify (optional <st-trait>))
+    (redeem-tokens uint)
+    (borrow-amount uint)
+  )
+  (let
+    (
+      (assets (unwrap! (map-get? account-assets account) ERR_INVALID_ACCOUNT))
+      (asset (try! (element-at assets u0)))
+      (account-snapshot-result (unwrap! (contract-call? asset get-account-snapshot account) ERR_UNKNOWN))
+      (sum-collateral u0)
+      (sum-borrow-plus-effects u0)
+    )
+    (if (not (is-eq ((get error account-snapshot-result) u0)))
+      (ok { error: ERR_SNAPSHOT_ERROR, liquidity: u0, shortfall: u0 })
+      (let
+        (
+          (oracle-price-mantissa (try! (get-underlying-price asset)))
+        )
+        (if (is-eq oracle-price-mantissa u0)
+          (ok { error: ERR_PRICE_ERROR, liquidity: u0, shortfall: u0 })
+          (let
+            (
+              (asset-principal (contract-of asset))
+              (market (try! (get-market asset-principal)))
+              (token-to-ether (try! (mul-exp3 (get collateral-factor-mantissa market) (get exchange-rate-mantissa (var-get account-snapshot-result)) (var-get oracle-price-mantissa))))
+            )
+            (begin
+              ;; FIXME?: sum-collateral, sum-borrow-plus-effects
+              (var-set sum-collateral (try! (mul-scalar-truncate-add-uint (var-get token-to-ether) (get stoken-balance (var-get account-snapshot-result)) (var-get sum-collateral))))
+              (var-set sum-borrow-plus-effects (try! (mul-scalar-truncate-add-uint (var-get oracle-price-mantissa) (get borrow-balance (var-get account-snapshot-result)) (var-get sum-borrow-plus-effects))))
+
+              (if (is-eq asset (try! stoken-modify))
+                (begin
+                  ;; FIXME?: sum-borrow-plus-effects
+                  (var-set sum-borrow-plus-effects (try! (mul-scalar-truncate-add-uint (var-get token-to-ether) redeem-tokens (var-get sum-borrow-plus-effects))))
+                  (var-set sum-borrow-plus-effects (try! (mul-scalar-truncate-add-uint (var-get oracle-price-mantissa) (get borrow-balance (var-get account-snapshot-result)) (var-get sum-borrow-plus-effects))))
+
+                  (if (> (var-get sum-collateral) (var-get sum-borrow-plus-effects))
+                    (ok { error: ERR_NO_ERROR, liquidity: (- (var-get sum-collateral) (var-get sum-borrow-plus-effects)), shortfall: u0 })
+                    (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- (var-get sum-borrow-plus-effects) (var-get sum-collateral)) })
+                  )
+                )
+                (if (> (var-get sum-collateral) (var-get sum-borrow-plus-effects))
+                  (ok { error: ERR_NO_ERROR, liquidity: (- (var-get sum-collateral) (var-get sum-borrow-plus-effects)), shortfall: u0 })
+                  (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- (var-get sum-borrow-plus-effects) (var-get sum-collateral)) })
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
 )
 
 ;; Utility functions
@@ -457,4 +536,42 @@
   (begin
     (ok (unwrap! (map-get? markets-account-membership { stoken: stoken, account: account }) ERR_INVALID_ACCOUNT_OR_STOKEN))
   )
+)
+
+;; SafeMath functions
+(define-private (mul-exp (a uint) (b uint))
+  (let
+    (
+      (double-scaled-product (* a b))
+      (double-scaled-product-with-half-scale (+ double-scaled-product (var-get half-exp-scale)))
+    )
+    (ok (/ double-scaled-product-with-half-scale (var-get exp-scale)))
+  )
+)
+
+(define-private (mul-exp3 (a uint) (b uint) (c uint))
+  (let
+    (
+      (ab (try! (mul-exp a b)))
+    )
+    (ok (try! (mul-exp ab c)))
+  )
+)
+
+(define-private (mul-scalar-truncate-add-uint (exp uint) (scalar uint) (addend uint))
+  (let
+    (
+      (product (* exp scalar))
+    )
+    (ok (+ (try! (truncate product)) addend))
+  )
+)
+
+(define-private (truncate (exp uint))
+  (ok (/ exp (var-get exp-scale)))
+)
+
+;; Oracle functions
+(define-private (get-underlying-price (asset <st-trait>))
+  (ok (* 3 (pow u10 u17)))
 )
