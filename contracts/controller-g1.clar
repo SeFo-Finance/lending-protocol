@@ -208,8 +208,17 @@
       ERR_MARKET_NOT_LISTED
       (if (not (try! (get-markets-account-membership stoken tx-sender)))
         ERR_NO_ERROR
-        (begin
-        
+        (let
+          (
+            (liquidity-result (try! (get-hypothetical-account-liquidity-internal redeemer stoken redeem-tokens u0)))
+          )
+          (if (not (is-eq (get error liquidity-result) ERR_NO_ERROR))
+            (err (get error liquidity-result))
+            (if (> (get shortfall liquidity-result) u0)
+              (err ERR_INSUFFICIENT_LIQUIDITY)
+              ERR_NO_ERROR
+            )
+          )
         )
       )
     )
