@@ -534,6 +534,38 @@
   )
 )
 
+;; @notice Calculate number of tokens of collateral asset to seize given an underlying amount
+;; @dev Used in liquidation (called in cToken.liquidateBorrowFresh)
+;; @param cTokenBorrowed The address of the borrowed cToken
+;; @param cTokenCollateral The address of the collateral cToken
+;; @param actualRepayAmount The amount of cTokenBorrowed underlying to convert into cTokenCollateral tokens
+;; @return (errorCode, number of cTokenCollateral tokens to be seized in a liquidation)
+(define-public (liquidate-calculate-seize-tokens
+    (stoken-borrowed <st-trait>)
+    (stoken-collateral <st-trait>)
+    (actual-repay-amount uint)
+  )
+  (let
+    (
+      (price-borrowed-mantissa (try! (get-underlying-price stoken-borrowed)))
+      (price-collateral-mantissa (try! (get-underlying-price stoken-collateral)))
+    )
+    (if (or (is-eq price-borrowed-mantissa u0) (is-eq price-collateral-mantissa u0))
+      (ok { error: ERR_PRICE_ERROR, seize-tokens: u0 })
+      (let
+        (
+          (exchange-rate-mantissa (unwrap! (contract-call? stoken-collateral exchange-rate-stored) ERR_UNKNOWN))
+          (numerator (try! (mul-exp (var-get liquidation-incentive-mantissa) (var-get price-borrowed-mantissa))))
+          (denominator (try! (mul-exp (var-get price-collateral-mantissa) exchange-rate-mantissa)))
+          (ratio (try! (div-exp numerator denominator)))
+          (seize-tokens (try! (mul-scalar-truncate ratio actual-repay-amount)))
+        )
+        (ok { error: ERR_NO_ERROR, seize-tokens: seize-tokens })
+      )
+    )
+  )
+)
+
 ;; Utility functions
 (define-private (get-market (stoken principal))
   (begin
@@ -548,6 +580,16 @@
 )
 
 ;; SafeMath functions
+(define-private (get-exp (num uint) (denom uint))
+  (let
+    (
+      (scaled-numerator (* num (var-get exp-scale)))
+      (rational (/ scaled-numerator denom))
+    )
+    (ok rational)
+  )
+)
+
 (define-private (mul-exp (a uint) (b uint))
   (let
     (
@@ -564,6 +606,19 @@
       (ab (try! (mul-exp a b)))
     )
     (ok (try! (mul-exp ab c)))
+  )
+)
+
+(define-private (div-exp (a uint) (b uint))
+  (ok (try! (get-exp a b)))
+)
+
+(define-private (mul-scalar-truncate (exp uint) (scalar uint))
+  (let
+    (
+      (product (* exp scalar))
+    )
+    (ok (try! (truncate product)))
   )
 )
 
