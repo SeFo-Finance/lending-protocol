@@ -46,7 +46,7 @@
 ;; liquidationIncentiveMantissa must be no less than this value
 (define-constant liquidation-incentive-min-mantissa (pow u10 u18)) ;; liquidationIncentiveMinMantissa = mantissaOne;
 ;; liquidationIncentiveMantissa must be no greater than this value
-(define-constant liquidation-incentive-mantissa (* 15 (pow u10 u18)))  ;; 1.5
+(define-constant liquidation-incentive-max-mantissa (* 15 (pow u10 u18)))  ;; 1.5
 
 (define-constant exp-scale (pow u10 u18))
 (define-constant half-exp-scale (/ (var-get exp-scale) u2))
@@ -83,7 +83,7 @@
 (define-public (get-assets-in (account principal))
   (let
     (
-      (assets-in (unwrap! (map-get? account-assets account) ERR_INVALID_ACCOUNT))
+      (assets-in (unwrap! (map-get? account-assets account) (err ERR_INVALID_ACCOUNT)))
     )
     (ok assets-in)
   )
@@ -121,15 +121,15 @@
       (market-to-join (try! (get-market stoken)))
     )
     (if (not (get is-listed market-to-join))
-      ERR_MARKET_NOT_LISTED
+      (err ERR_MARKET_NOT_LISTED)
       (if (try! (get-markets-account-membership stoken tx-sender))
-        ERR_NO_ERROR
-        (if (>= (len (unwrap! (map-get? account-assets tx-sender) ERR_INVALID_ACCOUNT)) (var-get max-assets))
-          ERR_TOO_MANY_ASSETS
+        (err ERR_NO_ERROR)
+        (if (>= (len (unwrap! (map-get? account-assets tx-sender) (err ERR_INVALID_ACCOUNT))) (var-get max-assets))
+          (err ERR_TOO_MANY_ASSETS)
           (begin
             (map-set markets-account-membership { stoken: stoken, account: tx-sender } true)
             ;; FIXME: accountAssets[msg.sender].push(cToken);
-            ERR_NO_ERROR
+            (ok ERR_NO_ERROR)
           )
         )
       )
@@ -205,18 +205,18 @@
       (market (try! (get-market stoken)))
     )
     (if (not (get is-listed market))
-      ERR_MARKET_NOT_LISTED
+      (err ERR_MARKET_NOT_LISTED)
       (if (not (try! (get-markets-account-membership stoken tx-sender)))
-        ERR_NO_ERROR
+        (err ERR_NO_ERROR)
         (let
           (
             (liquidity-result (try! (get-hypothetical-account-liquidity-internal redeemer stoken redeem-tokens u0)))
           )
-          (if (not (is-eq (get error liquidity-result) ERR_NO_ERROR))
+          (if (not (is-eq (get error liquidity-result) (err ERR_NO_ERROR)))
             (err (get error liquidity-result))
             (if (> (get shortfall liquidity-result) u0)
               (err ERR_INSUFFICIENT_LIQUIDITY)
-              ERR_NO_ERROR
+              (ok ERR_NO_ERROR)
             )
           )
         )
@@ -238,7 +238,7 @@
   )
   (begin
     (if (and (is-eq redeem-tokens u0) (> redeem-amount u0))
-      ERR_REDEEM_TOKENS_ZERO
+      (err ERR_REDEEM_TOKENS_ZERO)
       (ok true)
     )
   )
@@ -259,9 +259,9 @@
       (market (try! (get-market stoken)))
     )
     (if (not (get is-listed market))
-      ERR_MARKET_NOT_LISTED
+      (err ERR_MARKET_NOT_LISTED)
       (if (not (try! (get-markets-account-membership stoken borrower)))
-        ERR_MARKET_NOT_ENTERED
+        (err ERR_MARKET_NOT_ENTERED)
         (if ()
         
         )
@@ -342,7 +342,7 @@
       (market-collateral (try! (get-market stoken-collateral)))
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
-      ERR_MARKET_NOT_LISTED
+      (err ERR_MARKET_NOT_LISTED)
       (begin
       
       )
@@ -389,10 +389,10 @@
       (market-collateral (try! (get-market stoken-collateral)))
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
-      ERR_MARKET_NOT_LISTED
+      (err ERR_MARKET_NOT_LISTED)
       (if (false)
-        ERR_CONTROLLER_MISMATCH
-        ERR_NO_ERROR
+        (err ERR_CONTROLLER_MISMATCH)
+        (ok ERR_NO_ERROR)
       )
     )
   )
@@ -485,9 +485,9 @@
   )
   (let
     (
-      (assets (unwrap! (map-get? account-assets account) ERR_INVALID_ACCOUNT))
+      (assets (unwrap! (map-get? account-assets account) (err ERR_INVALID_ACCOUNT)))
       (asset (try! (element-at assets u0)))
-      (account-snapshot-result (unwrap! (contract-call? asset get-account-snapshot account) ERR_UNKNOWN))
+      (account-snapshot-result (unwrap! (contract-call? asset get-account-snapshot account) (err ERR_UNKNOWN)))
       (sum-collateral u0)
       (sum-borrow-plus-effects u0)
     )
@@ -554,7 +554,7 @@
       (ok { error: ERR_PRICE_ERROR, seize-tokens: u0 })
       (let
         (
-          (exchange-rate-mantissa (unwrap! (contract-call? stoken-collateral exchange-rate-stored) ERR_UNKNOWN))
+          (exchange-rate-mantissa (unwrap! (contract-call? stoken-collateral exchange-rate-stored) (err ERR_UNKNOWN)))
           (numerator (try! (mul-exp (var-get liquidation-incentive-mantissa) (var-get price-borrowed-mantissa))))
           (denominator (try! (mul-exp (var-get price-collateral-mantissa) exchange-rate-mantissa)))
           (ratio (try! (div-exp numerator denominator)))
@@ -566,16 +566,132 @@
   )
 )
 
+;; Admin functions
+;; @notice Sets a new price oracle for the comptroller
+;; @dev Admin function to set a new price oracle
+;; @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
+;; FIXME: oracle data type and logic
+(define-public (set-price-oracle (new-oracle uint)) (ok true))
+
+;; @notice Sets the closeFactor used when liquidating borrows
+;; @dev Admin function to set closeFactor
+;; @param newCloseFactorMantissa New close factor, scaled by 1e18
+;; @return uint 0=success, otherwise a failure. (See ErrorReporter for details)
+(define-public (set-close-factor (new-close-factor-mantissa uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
+    (let
+      (
+        (low-limit (var-get close-factor-min-mantissa))
+        (high-limit (var-get close-factor-max-mantissa))
+      )
+      (if (<= new-close-factor-mantissa low-limit)
+        (err ERR_INVALID_CLOSE_FACTOR)
+        (if (< high-limit new-close-factor-mantissa)
+          (err ERR_INVALID_CLOSE_FACTOR)
+          (begin
+            (var-set close-factor-mantissa new-close-factor-mantissa)
+            (ok ERR_NO_ERROR)
+          )
+        )
+      )
+    )
+  )
+)
+
+;; @notice Sets the collateralFactor for a market
+;; @dev Admin function to set per-market collateralFactor
+;; @param cToken The market to set the factor on
+;; @param newCollateralFactorMantissa The new collateral factor, scaled by 1e18
+;; @return uint 0=success, otherwise a failure. (See ErrorReporter for details)
+(define-public (set-collateral-factor
+    (stoken <st-trait>)
+    (new-collateral-factor-mantissa uint)
+  )
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
+    (let
+      (
+        (market (try! (get-market stoken)))
+      )
+      (if (not (get is-listed market))
+        (err ERR_MARKET_NOT_LISTED)
+        (let
+          (
+            (high-limit (var-get collateral-factor-max-mantissaa))
+          )
+          (if (< high-limit new-collateral-factor-mantissa)
+            (err ERR_INVALID_COLLATERAL_FACTOR)
+            (let
+              (
+                (price (try! (get-underlying-price stoken)))
+              )
+              (if (and (not (is-eq new-collateral-factor-mantissa u0)) (is-eq price u0))
+                (err ERR_PRICE_ERROR)
+                (let
+                  (
+                    (new-market (merge market { collateral-factor-mantissa: new-collateral-factor-mantissa }))
+                  )
+                  (map-set markets stoken new-market)
+                  (ok ERR_NO_ERROR)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+;; @notice Sets maxAssets which controls how many markets can be entered
+;; @dev Admin function to set maxAssets
+;; @param newMaxAssets New max assets
+;; @return uint 0=success, otherwise a failure. (See ErrorReporter for details)
+(define-public (set-max-assets (new-max-assets uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
+    (var-set max-assets new-max-assets)
+    (ok ERR_NO_ERROR)
+  )
+)
+
+;; @notice Sets liquidationIncentive
+;; @dev Admin function to set liquidationIncentive
+;; @param newLiquidationIncentiveMantissa New liquidationIncentive scaled by 1e18
+;; @return uint 0=success, otherwise a failure. (See ErrorReporter for details)
+(define-public (set-liquidation-incentive (new-liquidation-incentive-mantissa))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
+    (let
+      (
+        (min-liquidation-incentive (var-get liquidation-incentive-min-mantissa))
+        (max-liquidation-incentive (var-get liquidation-incentive-max-mantissa))
+      )
+      (if (< new-liquidation-incentive-mantissa min-liquidation-incentive)
+        (err ERR_INVALID_LIQUIDATION_INCENTIVE)
+        (if (< max-liquidation-incentive new-liquidation-incentive-mantissa)
+          (err ERR_INVALID_LIQUIDATION_INCENTIVE)
+          (begin
+            (var-set liquidation-incentive-mantissa new-liquidation-incentive-mantissa)
+            (ok ERR_NO_ERROR)
+          )
+        )
+      )
+    )
+  )
+)
+
 ;; Utility functions
 (define-private (get-market (stoken principal))
   (begin
-    (ok (unwrap! (map-get? markets stoken) ERR_INVALID_STOKEN))
+    (ok (unwrap! (map-get? markets stoken) (err ERR_INVALID_STOKEN)))
   )
 )
 
 (define-private (get-markets-account-membership (stoken principal) (account principal))
   (begin
-    (ok (unwrap! (map-get? markets-account-membership { stoken: stoken, account: account }) ERR_INVALID_ACCOUNT_OR_STOKEN))
+    (ok (unwrap! (map-get? markets-account-membership { stoken: stoken, account: account }) (err ERR_INVALID_ACCOUNT_OR_STOKEN)))
   )
 )
 
