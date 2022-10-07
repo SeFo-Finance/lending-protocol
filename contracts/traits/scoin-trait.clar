@@ -1,11 +1,12 @@
 (use-trait stoken-trait .stoken-trait.stoken-trait)
 ;; scoin-trait
 ;; <add a description here>
+(use-trait ft-trait .sip-010-ft-trait.ft-trait)
 
 (define-trait scoin-trait 
     (
         ;; user-interface
-        (mint (uint) (response uint uint))
+        (deposit-and-mint (<ft-trait> uint) (response uint uint))
         (redeem (uint) (response uint uint))
         (redeem-underlying (uint) (response uint uint))
         (borrow (uint) (response uint uint))

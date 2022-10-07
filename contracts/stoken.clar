@@ -1,5 +1,6 @@
 (impl-trait .stoken-trait.stoken-trait)
 (use-trait ir-trait .interest-rate-trait.ir-trait)
+(use-trait ft-trait .sip-010-ft-trait.ft-trait)
 ;; stoken
 ;; <add a description here>
 
@@ -23,7 +24,6 @@
 (define-data-var borrow-index uint u0)
 (define-data-var total-borrows uint u0)
 (define-data-var total-reserves uint u0)
-(define-data-var total-supply uint u0)
 (define-map account-borrows principal {
     balance: uint, interest-index: uint
 })
@@ -107,17 +107,16 @@
         ))
 
 (define-read-only (get-exchange-rate-stored) 
-    (begin 
-        (if (is-eq (var-get total-supply) u0) 
+    (let (
+        (stoken-supply (ft-get-supply stoken))
+        (cash (try! (get-cash-prior)))
+        (borrows (var-get total-borrows))
+        (reserves (var-get total-reserves))
+        (token-usage (- (+ cash borrows) reserves))
+        (exchange-rate (/ token-usage stoken-supply))) 
+        (if (<= stoken-supply u0) 
             (ok (var-get initial-exchange-rate-mantissa)) 
-            (let (
-                (cash (try! (get-cash-prior)))
-                (borrows (var-get total-borrows))
-                (reserves (var-get total-reserves))
-                (stoken-supply (var-get total-supply))
-                (token-usage (- (+ cash borrows) reserves))
-                (exchange-rate (/ token-usage stoken-supply))) 
-                (ok exchange-rate)))))
+            (ok exchange-rate))))
 
 (define-public (accrue-interest) 
     (let (
@@ -183,6 +182,25 @@
         (ok true)
     )
 )
+
+(define-public (despoit-and-mint (coin <ft-trait>) (amount uint)) 
+    (begin 
+        (asserts! (try! (accrue-interest)) (err u101))
+        ;; to-do:controller verify
+        (let (
+            (minter tx-sender)
+            (coin-recipient (as-contract tx-sender))
+            (block-accrual (var-get accrual-block))
+            (block-now block-height)
+            (exchange-rate (try! (get-exchange-rate-stored)))
+            (coin-balance (unwrap! (contract-call? coin get-balances minter) (err u101)))
+            (mint-stoken-amount (/ amount exchange-rate))) 
+            (begin 
+                (asserts! (>= coin-balance amount) (err u101))
+                (asserts! (unwrap! (contract-call? coin transfer amount minter coin-recipient none) (err u111)) (err u1011))
+                (asserts! (try! (ft-mint? stoken mint-stoken-amount minter)) (err u1011))
+                (ok mint-stoken-amount)))
+        ))
 
 ;;         (total-borrows-current () (response uint uint)) 
 ;;         (borrow-balance-current (principal) (response uint uint)) 
