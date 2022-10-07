@@ -1,6 +1,6 @@
 (impl-trait .stoken-trait.stoken-trait)
 (use-trait ir-trait .interest-rate-trait.ir-trait)
-(use-trait ft-trait .sip-010-ft-trait.ft-trait)
+(use-trait scoin-trait .scoin-trait.scoin-trait)
 ;; stoken
 ;; <add a description here>
 
@@ -93,11 +93,11 @@
 
 (define-read-only (get-borrow-balance-stored (user principal)) 
     (let (
-        (borrow (default-to 
+        (user-borrow (default-to 
             {balance: u0, interest-index: u0} 
             (map-get? account-borrows user)))
-        (borrow-balance (get balance borrow))
-        (borrow-interest-index (get interest-index borrow))
+        (borrow-balance (get balance user-borrow))
+        (borrow-interest-index (get interest-index user-borrow))
         (borrow-i (var-get borrow-index))) 
         (if (is-eq borrow-balance u0) 
             (ok u0)  
@@ -183,7 +183,7 @@
     )
 )
 
-(define-public (despoit-and-mint (coin <ft-trait>) (amount uint)) 
+(define-public (despoit-and-mint (amount uint)) 
     (begin 
         (asserts! (try! (accrue-interest)) (err u101))
         ;; to-do:controller verify
@@ -193,20 +193,100 @@
             (block-accrual (var-get accrual-block))
             (block-now block-height)
             (exchange-rate (try! (get-exchange-rate-stored)))
-            (coin-balance (unwrap! (contract-call? coin get-balances minter) (err u101)))
+            (coin-balance (unwrap! (contract-call? .token get-balances minter) (err u101)))
             (mint-stoken-amount (/ amount exchange-rate))) 
             (begin 
+                (asserts! (is-eq block-now block-accrual) (err u101))
                 (asserts! (>= coin-balance amount) (err u101))
-                (asserts! (unwrap! (contract-call? coin transfer amount minter coin-recipient none) (err u111)) (err u1011))
+                (asserts! (unwrap! (contract-call? .token transfer amount minter coin-recipient none) (err u111)) (err u1011))
                 (asserts! (try! (ft-mint? stoken mint-stoken-amount minter)) (err u1011))
-                (ok mint-stoken-amount)))
-        ))
+                (ok {
+                    stoken-amount: mint-stoken-amount,
+                    token-amount: amount
+                })))))
 
-;;         (total-borrows-current () (response uint uint)) 
-;;         (borrow-balance-current (principal) (response uint uint)) 
-;;         (borrow-balancestored (principal) (response uint uint)) 
-;;         (exchange-rate-current () (response uint uint))
-;;         (exchange-rate-stored () (response uint uint))
-;;         (get-cash () (response uint uint))
-;;         (accrue-interest () (response uint uint))
-;;         (seize (uint principal principal) (response uint uint)) 
+(define-public (redeem (amount uint)) 
+    (begin 
+        (asserts! (try! (accrue-interest)) (err u101))
+        ;; to-do:controller verify
+        (let (
+            (redeemer tx-sender)
+            (sender (as-contract tx-sender))
+            (block-accrual (var-get accrual-block))
+            (block-now block-height)
+            (exchange-rate (try! (get-exchange-rate-stored)))
+            (token-amount (* amount exchange-rate))) 
+            (begin 
+                (asserts! (is-eq block-now block-accrual) (err u101))
+                (asserts! (>= token-amount u0) (err u101))
+                (asserts! (unwrap! 
+                    (as-contract 
+                        (contract-call? .token transfer token-amount sender redeemer none)) 
+                        (err u111))
+                    (err u1011)))
+                (asserts! (try! (ft-burn? stoken amount redeemer)) (err u1011))
+                (ok {
+                    stoken-amount: amount,
+                    token-amount: token-amount
+                }))))
+
+(define-public (borrow (amount uint)) 
+    (begin 
+        (asserts! (try! (accrue-interest)) (err u101))
+        ;; to-do:controller verify
+        (let (
+            (borrower tx-sender)
+            (sender (as-contract tx-sender))
+            (block-accrual (var-get accrual-block))
+            (block-now block-height)
+            (contract-token-balance (try! (get-cash-prior)))
+            (borrow-balance (try! (get-borrow-balance-stored borrower)))
+            (total-borrow-balance (var-get total-borrows))
+            (new-borrow-balance (+ borrow-balance amount))
+            (new-total-borrow-balance (+ total-borrow-balance amount))
+            (borrow-i (var-get borrow-index)))
+            (begin 
+                (asserts! (is-eq block-now block-accrual) (err u101))
+                (asserts! (>= contract-token-balance amount) (err u101))
+                (asserts! (unwrap! 
+                    (as-contract 
+                        (contract-call? .token transfer amount sender borrower none)) 
+                        (err u111))
+                    (err u1011)))
+                (map-set account-borrows borrower {
+                    balance: new-borrow-balance,
+                    interest-index: borrow-i
+                })
+                (var-set total-borrows new-total-borrow-balance)
+                (ok amount))))
+
+(define-public (repay-borrow (amount uint)) 
+    (begin 
+        (asserts! (try! (accrue-interest)) (err u101))
+        ;; to-do:controller verify
+        (let (
+            (borrower tx-sender)
+            (recipient (as-contract tx-sender))
+            (block-accrual (var-get accrual-block))
+            (block-now block-height)
+            (coin-balance (unwrap! (contract-call? .token get-balances borrower) (err u101)))
+            (user-repay (try! (borrow-balance-current borrower)))
+            (repay-amount (if (>= user-repay amount) amount user-repay))
+            (total-borrow-balance (var-get total-borrows))
+            (new-borrow-balance (- user-repay repay-amount))
+            (new-total-borrow-balance (- total-borrow-balance repay-amount))
+            (borrow-i (var-get borrow-index)))
+            (begin 
+                (asserts! (is-eq block-now block-accrual) (err u101))
+                (asserts! (>= coin-balance repay-amount) (err u101))
+                (asserts! (unwrap! 
+                    (as-contract 
+                        (contract-call? .token transfer repay-amount borrower recipient none)) 
+                        (err u111))
+                    (err u1011)))
+                (map-set account-borrows borrower {
+                    balance: new-borrow-balance,
+                    interest-index: borrow-i
+                })
+                (var-set total-borrows new-total-borrow-balance)
+                (ok repay-amount))))
