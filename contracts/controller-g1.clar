@@ -35,8 +35,6 @@
   { stoken: principal, account: principal }
   bool
 )
-;; Indicator that this is a Comptroller contract (for inspection)
-(define-constant is-controller true)
 ;; closeFactorMantissa must be strictly greater than this value
 (define-constant close-factor-min-mantissa (* 5 (pow u10 u16)))  ;; 0.05
 ;; closeFactorMantissa must not exceed this value
@@ -76,6 +74,11 @@
 (define-constant ERR_TOO_MANY_ASSETS u16)
 (define-constant ERR_TOO_MUCH_REPAY u17)
 
+
+;; Indicator that this is a Comptroller contract (for inspection)
+(define-public (is-controller)
+  (ok true)
+)
 
 ;; @notice Returns the assets an account has entered
 ;; @param account The address of the account to pull assets for
