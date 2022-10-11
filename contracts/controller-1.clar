@@ -22,7 +22,8 @@
 ;; FIXME (default value): Max number of assets a single account can participate in (borrow or use as collateral)
 (define-data-var max-assets uint u0)
 ;; Per-account mapping of "assets you are in", capped by max-assets
-(define-map account-assets principal (list 100 <st-trait>))
+;; (define-map account-assets principal (list 100 <st-trait>))
+(define-map account-assets principal (list 100 principal))
 
 ;; ComptrollerG1 variables
 (define-map markets principal {
