@@ -1,5 +1,5 @@
 (impl-trait .interest-rate-trait.ir-trait)
-(define-constant BASE (pow u10 u18))
+(define-constant BASE (pow u10 u8))
 (define-data-var base-rate-per-block uint u0) ;; manual input param before run
 (define-data-var multiplier-per-block uint u0) ;; manual input param before run
 
