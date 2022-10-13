@@ -7,12 +7,12 @@
         ;; user-interface
         (deposit-and-mint (uint) (response {
             token-amount: uint,
-            stoken-amount: uint
+            stx-amount: uint
         } uint))
         (redeem (uint) (response {
             token-amount: uint,
-            stoken-amount: uint
-        } uint))
+            stx-amount: uint
+         } uint))
         ;; (redeem-underlying (uint) (response uint uint))
         (borrow (uint) (response uint uint))
         (repay-borrow (uint) (response uint uint))
