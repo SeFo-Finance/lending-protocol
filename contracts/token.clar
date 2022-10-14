@@ -35,10 +35,6 @@
     (ok (some u"uri"))
 )
 
-(define-public (get-token-uri-1 (a (list 5 uint))) 
-    (ok (some u"uri"))
-)
-
 (define-public (transfer (amount uint) (sender principal) (recipient principal) (memo (optional (buff 34)))) 
     (begin 
         (asserts! (is-eq tx-sender sender) err-owner-only)

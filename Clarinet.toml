@@ -26,6 +26,9 @@ depends_on = []
 path = "contracts/traits/stoken-trait.clar"
 depends_on = ["sip-010-ft-trait"]
 
+[contracts.stoken-registry-trait]
+path = "contracts/traits/stoken-registry-trait.clar"
+
 [contracts.scoin-trait]
 path = "contracts/traits/scoin-trait.clar"
 depends_on = ["sip-010-ft-trait"]
@@ -33,6 +36,9 @@ depends_on = ["sip-010-ft-trait"]
 [contracts.stoken]
 path = "contracts/stoken.clar"
 depends_on = ["stoken-trait"]
+
+[contracts.stoken-registry]
+path = "contracts/stoken-registry.clar"
 
 [contracts.token]
 path = "contracts/token.clar"
