@@ -9,6 +9,8 @@
         (get-account-snapshot (principal) (response {
             stoken-balance: uint, borrow-balance: uint, exchange-rate: uint
         } uint))
+        (get-total-borrows () (response uint uint))
+        (get-total-reserves () (response uint uint))
         (get-borrow-rate-per-block () (response uint uint))
         (get-supply-rate-per-block () (response uint uint)) 
         (total-borrows-current () (response uint uint)) 

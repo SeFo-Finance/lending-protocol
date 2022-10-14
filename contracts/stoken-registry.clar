@@ -55,6 +55,12 @@
 ;; public functions
 ;;
 
+(define-read-only (get-total-borrows) 
+    (ok (var-get total-borrows)))
+
+(define-read-only (get-total-reserves) 
+    (ok (var-get total-reserves)))
+
 (define-read-only (get-borrow-rate-per-block) 
     (let (     
         (contract-balance (unwrap! (get-cash-prior) err-get-stx-balances))
