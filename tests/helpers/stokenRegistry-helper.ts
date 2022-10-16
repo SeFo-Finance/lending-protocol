@@ -91,3 +91,29 @@ export function addReserves(
     ]);
     block.receipts[0].result.expectOk().expectBool(true)
 }
+
+export function borrow(
+    chain:Chain,sender:string,amount:bigint
+    ):String{
+    let block = chain.mineBlock([
+        Tx.contractCall(
+            "stoken-registry","borrow",
+            [types.uint(amount)],
+            sender
+        )
+    ]);
+    return block.receipts[0].result.expectOk()
+}
+
+export function repayBorrow(
+    chain:Chain,sender:string,amount:bigint
+    ):String{
+    let block = chain.mineBlock([
+        Tx.contractCall(
+            "stoken-registry","repay-borrow",
+            [types.uint(amount)],
+            sender
+        )
+    ]);
+    return block.receipts[0].result.expectOk()
+}
