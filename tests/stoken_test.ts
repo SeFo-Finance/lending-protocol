@@ -9,6 +9,8 @@ import {
     depositAndMint,
     redeem, 
     addReserves,
+    borrow,
+    repayBorrow,
 } from "./helpers/stokenRegistry-helper.ts"
 import { INITIAL_EXCHANGE_RATE_MANTISSA, SCALAR } from './common.ts';
 
@@ -116,9 +118,63 @@ Clarinet.test({
         totalReserves.expectUint(totalReserves_ex)
         const exchangeRate_2=await getExchangeRate(chain,user1.address)
         exchangeRate_2.expectUint(exchangeRate_ex_2)
-        // const withdrawAmount_ex=(mintStokenAmount_ex*exchangeRate_ex)/SCALAR
-        // let withdrawAmount = redeem(chain,user1.address,mintStokenAmount_ex)
-        // withdrawAmount.expectUint(withdrawAmount_ex)
+    },
+});
+
+Clarinet.test({
+    name: "testing Borrow",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer=accounts.get("deployer");
+        if (!deployer) throw new Error("deployer not found");
+        const user1=accounts.get("wallet_1");
+        if (!user1) throw new Error("user1 not found");
+        const addReserveAmount=1000000n
+        addReserves(chain,user1.address,addReserveAmount)
+        let totalReserves=await getTotalReserves(chain,user1.address)
+        totalReserves.expectUint(addReserveAmount)
+        const depositStxAmount=2000000n
+        const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
+        const borrowAmount=500000n
+        const totalBorrows_ex=borrowAmount
+        const totalReserves_ex=addReserveAmount
+        const assetAmount=totalReserves_ex+depositStxAmount-borrowAmount
+        const exchangeRate_ex=calculateExchangeRate(
+            assetAmount,totalBorrows_ex,totalReserves_ex,mintStokenAmount_ex
+            )
+        let mintAmount = depositAndMint(chain,user1.address,depositStxAmount)
+        mintAmount.expectUint(mintStokenAmount_ex)
+        let borrowRes = borrow(chain,user1.address,borrowAmount)
+        borrowRes.expectUint(borrowAmount)
+        const totalBorrow=await getTotalBorrows(chain,user1.address)
+        totalBorrow.expectUint(totalBorrows_ex)
+        const exchangeRate=await getExchangeRate(chain,user1.address)
+        exchangeRate.expectUint(exchangeRate_ex)
+    },
+});
+
+Clarinet.test({
+    name: "testing Borrow",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer=accounts.get("deployer");
+        if (!deployer) throw new Error("deployer not found");
+        const user1=accounts.get("wallet_1");
+        if (!user1) throw new Error("user1 not found");
+        const addReserveAmount=1000000n
+        addReserves(chain,user1.address,addReserveAmount)
+        let totalReserves=await getTotalReserves(chain,user1.address)
+        totalReserves.expectUint(addReserveAmount)
+        const depositStxAmount=2000000n
+        const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
+        const borrowAmount=500000n
+        const totalBorrows_ex=borrowAmount
+        const totalReserves_ex=addReserveAmount
+        const assetAmount=totalReserves_ex+depositStxAmount-borrowAmount
+        let mintAmount = depositAndMint(chain,user1.address,depositStxAmount)
+        mintAmount.expectUint(mintStokenAmount_ex)
+        let borrowRes = borrow(chain,user1.address,borrowAmount)
+        borrowRes.expectUint(borrowAmount)
+        let repayBorrowRes = repayBorrow(chain,user1.address,borrowAmount)
+        repayBorrowRes.expectUint(borrowAmount)
     },
 });
 

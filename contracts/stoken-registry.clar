@@ -300,14 +300,14 @@
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= coin-balance repay-amount) err-balance-not-enough)
                 (asserts! (try! 
-                    (as-contract (stx-transfer? repay-amount borrower recipient)))
-                    err-transfer-stx-fail))
+                    (stx-transfer? repay-amount borrower recipient))
+                    err-transfer-stx-fail)
                 (map-set account-borrows borrower {
                     balance: new-borrow-balance,
                     interest-index: borrow-i
                 })
                 (var-set total-borrows new-total-borrow-balance)
-                (ok repay-amount))))
+                (ok repay-amount)))))
 
 (define-public (add-reserves (amount uint)) 
     (begin 
