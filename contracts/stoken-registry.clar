@@ -155,12 +155,14 @@
                 (div-scalar-by-exp-truncate (* interest-factor borrows)) 
                 err-div-scalar))
             (new-borrows (+ interest-accumulated borrows) )
-            (new-reserves (unwrap!
-                (div-scalar-by-exp-truncate (+ (* interest-accumulated reserve-factor) reserves))
+            (add-reserve (unwrap!
+                (div-scalar-by-exp-truncate (* interest-accumulated reserve-factor))
                 err-div-scalar))
-            (new-borrow-i (unwrap!
-                (div-scalar-by-exp-truncate (+ (* interest-factor borrow-i) borrow-i))
-                err-div-scalar)))
+            (new-reserves (+ add-reserve reserves))
+            (add-borrow-i (unwrap!
+                (div-scalar-by-exp-truncate (* interest-factor borrow-i))
+                err-div-scalar))
+            (new-borrow-i (+ add-borrow-i borrow-i)))
             (var-set accrual-block now-block)
             (var-set total-borrows new-borrows)
             (var-set total-reserves new-reserves)

@@ -1,7 +1,15 @@
 import { Clarinet, Tx, Chain, Account, types } from 'https://deno.land/x/clarinet@v1.0.2/index.ts';
 import { assertEquals } from 'https://deno.land/std@0.90.0/testing/asserts.ts';
 import {calculateExchangeRate, getAssetBalance,getTotalSupply} from "./helpers/helper.ts"
-import { getCash,getExchangeRate, getTotalBorrows,getTotalReserves } from "./helpers/stokenRegistry-helper.ts"
+import { 
+    getCash,
+    getExchangeRate,
+    getTotalBorrows,
+    getTotalReserves,
+    depositAndMint,
+    redeem, 
+    addReserves,
+} from "./helpers/stokenRegistry-helper.ts"
 import { INITIAL_EXCHANGE_RATE_MANTISSA, SCALAR } from './common.ts';
 
 Clarinet.test({
@@ -19,19 +27,8 @@ Clarinet.test({
             depositStxAmount,totalBorrows_ex,totalReserves_ex,mintStokenAmount_ex
             )
         const stokenRegistryAddress=`${deployer.address}.stoken-registry`
-        let block = chain.mineBlock([
-            Tx.contractCall(
-                "stoken-registry","despoit-and-mint",
-                [types.uint(depositStxAmount)],
-                user1.address
-            )
-        ]);
-        assertEquals(
-          block.receipts[0].result.expectOk().expectTuple(),
-            {
-              "stoken-amount":types.uint(mintStokenAmount_ex),
-              "stx-amount":types.uint(depositStxAmount),
-           });
+        let stokenAmount = depositAndMint(chain,user1.address,depositStxAmount)
+        stokenAmount.expectUint(mintStokenAmount_ex)
         const stxForRegistry = getAssetBalance(chain,"STX",stokenRegistryAddress)
         assertEquals(stxForRegistry, depositStxAmount);
         const stokenForUser = getAssetBalance(chain,".stoken.stoken",user1.address)
@@ -50,8 +47,8 @@ Clarinet.test({
 });
 
 Clarinet.test({
-    name: "testing first Deposit",
-    fn(chain: Chain, accounts: Map<string, Account>) {
+    name: "testing Deposit and Redeem",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
         const deployer=accounts.get("deployer");
         if (!deployer) throw new Error("deployer not found");
         const user1=accounts.get("wallet_1");
@@ -63,32 +60,66 @@ Clarinet.test({
         const exchangeRate_ex=calculateExchangeRate(
             depositStxAmount,totalBorrows_ex,totalReserves_ex,mintStokenAmount_ex
             )
-        const stokenRegistryAddress=`${deployer.address}.stoken-registry`
-        let block = chain.mineBlock([
-            Tx.contractCall(
-                "stoken-registry","despoit-and-mint",
-                [types.uint(depositStxAmount)],
-                user1.address
-            )
-        ]);
-        assertEquals(
-          block.receipts[0].result.expectOk().expectTuple(),
-            {
-              "stoken-amount":types.uint(mintStokenAmount_ex),
-              "stx-amount":types.uint(depositStxAmount),
-           });
-        block = chain.mineBlock([
-            Tx.contractCall(
-                "stoken-registry","redeem",
-                [types.uint(mintStokenAmount_ex)],
-                user1.address
-            )
-        ]);
-        assertEquals(
-            block.receipts[0].result.expectOk().expectTuple(),
-            {
-                "stoken-amount":types.uint(mintStokenAmount_ex),
-                "stx-amount":types.uint(depositStxAmount),
-            });
+        let mintAmount = depositAndMint(chain,user1.address,depositStxAmount)
+        mintAmount.expectUint(mintStokenAmount_ex)
+        const exchangeRate=await getExchangeRate(chain,user1.address)
+        exchangeRate.expectUint(exchangeRate_ex)
+        const withdrawAmount_ex=(mintStokenAmount_ex*exchangeRate_ex)/SCALAR
+        let withdrawAmount = redeem(chain,user1.address,mintStokenAmount_ex)
+        withdrawAmount.expectUint(withdrawAmount_ex)
     },
 });
+
+Clarinet.test({
+    name: "testing add reserves",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer=accounts.get("deployer");
+        if (!deployer) throw new Error("deployer not found");
+        const user1=accounts.get("wallet_1");
+        if (!user1) throw new Error("user1 not found");
+        const addReserveAmount=1000000n
+        addReserves(chain,user1.address,addReserveAmount)
+        const totalReserves=await getTotalReserves(chain,user1.address)
+        totalReserves.expectUint(addReserveAmount)
+        const exchangeRate=await getExchangeRate(chain,user1.address)
+        exchangeRate.expectUint(INITIAL_EXCHANGE_RATE_MANTISSA)
+    },
+});
+
+Clarinet.test({
+    name: "testing add Reserves and Deposit",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer=accounts.get("deployer");
+        if (!deployer) throw new Error("deployer not found");
+        const user1=accounts.get("wallet_1");
+        if (!user1) throw new Error("user1 not found");
+        const addReserveAmount=1000000n
+        addReserves(chain,user1.address,addReserveAmount)
+        let totalReserves=await getTotalReserves(chain,user1.address)
+        totalReserves.expectUint(addReserveAmount)
+        const exchangeRate_1=await getExchangeRate(chain,user1.address)
+        exchangeRate_1.expectUint(INITIAL_EXCHANGE_RATE_MANTISSA)
+
+        const depositStxAmount=2000000n
+        const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
+        const totalBorrows_ex=0n
+        const totalReserves_ex=addReserveAmount
+        const assetAmount=totalReserves_ex+depositStxAmount
+        const exchangeRate_ex_2=calculateExchangeRate(
+            assetAmount,totalBorrows_ex,totalReserves_ex,mintStokenAmount_ex
+            )
+        let mintAmount = depositAndMint(chain,user1.address,depositStxAmount)
+        mintAmount.expectUint(mintStokenAmount_ex)
+        const cash=await getCash(chain,user1.address)
+        cash.expectUint(assetAmount)
+        totalReserves=await getTotalReserves(chain,user1.address)
+        totalReserves.expectUint(totalReserves_ex)
+        const exchangeRate_2=await getExchangeRate(chain,user1.address)
+        exchangeRate_2.expectUint(exchangeRate_ex_2)
+        // const withdrawAmount_ex=(mintStokenAmount_ex*exchangeRate_ex)/SCALAR
+        // let withdrawAmount = redeem(chain,user1.address,mintStokenAmount_ex)
+        // withdrawAmount.expectUint(withdrawAmount_ex)
+    },
+});
+
+

@@ -7,7 +7,7 @@ import { SCALAR } from '../common.ts';
 export function calculateExchangeRate(
     cash:bigint,borrows:bigint,reserves:bigint,supply:bigint
     ):bigint{
-    return (cash-borrows-reserves)*SCALAR/supply
+    return (cash+borrows-reserves)*SCALAR/supply
 }
 
 
