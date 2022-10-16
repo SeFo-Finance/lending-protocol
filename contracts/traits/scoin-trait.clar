@@ -20,6 +20,6 @@
         ;; (liquidate-borrow (<stoken-trait> uint principal) (response uint uint))
 
         ;; admin-interface
-        ;; (add-reserves (uint) (response uint uint)) 
+        (add-reserves (uint) (response uint uint)) 
         
         ))
