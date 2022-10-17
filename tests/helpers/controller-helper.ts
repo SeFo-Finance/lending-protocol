@@ -2,6 +2,7 @@ import { Chain, Tx, types } from 'https://deno.land/x/clarinet@v1.0.2/index.ts'
 
 const CONTROLLER_CONTRACT = 'controller-1'
 
+// Authorization function
 export const isController = async (
   chain: Chain,
   sender: string,
@@ -14,6 +15,7 @@ export const isController = async (
   return block.receipts[0].result.expectOk()
 }
 
+// Verification functions
 export const mintVerify = async (
   chain: Chain,
   sender: string,
@@ -111,18 +113,18 @@ export const repayBorrowVerify = async (
 }
 
 export const liquidateBorrowVerify = async (
-	chain: Chain,
-	sender: string,
-	stokenBorrowed: string,
+  chain: Chain,
+  sender: string,
+  stokenBorrowed: string,
   stokenCollateral: string,
-	liquidator: string,
+  liquidator: string,
   borrower: string,
-	repayAmount: bigint,
-	seizeTokens: bigint,
+  repayAmount: bigint,
+  seizeTokens: bigint,
 ): Promise<String> => {
-	const block = chain.mineBlock([
-		Tx.contractCall(
-			CONTROLLER_CONTRACT,
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
       'liquidate-borrow-verify',
       [
         types.principal(stokenBorrowed),
@@ -133,23 +135,23 @@ export const liquidateBorrowVerify = async (
         types.uint(seizeTokens),
       ],
       sender,
-		)
-	])
-	return block.receipts[0].result.expectOk()
+    )
+  ])
+  return block.receipts[0].result.expectOk()
 }
 
 export const seizeVerify = async (
-	chain: Chain,
-	sender: string,
+  chain: Chain,
+  sender: string,
   stokenCollateral: string,
-	stokenBorrowed: string,
-	liquidator: string,
+  stokenBorrowed: string,
+  liquidator: string,
   borrower: string,
-	seizeTokens: bigint,
+  seizeTokens: bigint,
 ): Promise<String> => {
-	const block = chain.mineBlock([
-		Tx.contractCall(
-			CONTROLLER_CONTRACT,
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
       'seize-verify',
       [
         types.principal(stokenCollateral),
@@ -159,22 +161,22 @@ export const seizeVerify = async (
         types.uint(seizeTokens),
       ],
       sender,
-		)
-	])
-	return block.receipts[0].result.expectOk()
+    )
+  ])
+  return block.receipts[0].result.expectOk()
 }
 
 export const transferVerify = async (
-	chain: Chain,
-	sender: string,
+  chain: Chain,
+  sender: string,
   stoken: string,
-	src: string,
-	dst: string,
-	transferTokens: bigint,
+  src: string,
+  dst: string,
+  transferTokens: bigint,
 ): Promise<String> => {
-	const block = chain.mineBlock([
-		Tx.contractCall(
-			CONTROLLER_CONTRACT,
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
       'transfer-verify',
       [
         types.principal(stoken),
@@ -183,9 +185,55 @@ export const transferVerify = async (
         types.uint(transferTokens),
       ],
       sender,
-		)
-	])
-	return block.receipts[0].result.expectOk()
+    )
+  ])
+  return block.receipts[0].result.expectOk()
+}
+
+// Admin setter functions
+export const setCloseFactor = async (
+  chain: Chain,
+  sender: string,
+  newCloseFactorMantissa: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(CONTROLLER_CONTRACT, 'set-close-factor', [types.uint(newCloseFactorMantissa)], sender)
+  ])
+  return block.receipts[0].result
+}
+
+export const setCollateralFactor = async (
+  chain: Chain,
+  sender: string,
+  stoken: string,
+  newCollateralFactorMantissa: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(CONTROLLER_CONTRACT, 'set-collateral-factor', [types.uint(newCollateralFactorMantissa)], sender)
+  ])
+  return block.receipts[0].result
+}
+
+export const setMaxAssets = async (
+  chain: Chain,
+  sender: string,
+  newMaxAssets: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(CONTROLLER_CONTRACT, 'set-max-assets', [types.uint(newMaxAssets)], sender)
+  ])
+  return block.receipts[0].result
+}
+
+export const setLiquidationIncentive = async (
+  chain: Chain,
+  sender: string,
+  newLiquidationIncentiveMantissa: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(CONTROLLER_CONTRACT, 'set-liquidation-incentive', [types.uint(newLiquidationIncentiveMantissa)], sender)
+  ])
+  return block.receipts[0].result
 }
 
 // Utility functions
@@ -284,4 +332,15 @@ export const getUnderlyingPrice = async (
     CONTROLLER_CONTRACT, 'get-underlying-price', [asset ? types.some(asset) : types.none()], sender  
   )
   return res.result
+}
+
+export const setPriceOracle = async (
+  chain: Chain,
+  sender: string,
+  newOracle: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(CONTROLLER_CONTRACT, 'set-price-oracle', [types.uint(newOracle)], sender)
+  ])
+  return block.receipts[0].result.expectOk()
 }

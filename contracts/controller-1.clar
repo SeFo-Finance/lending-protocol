@@ -48,7 +48,7 @@
 ;; liquidationIncentiveMantissa must be no less than this value
 (define-constant liquidation-incentive-min-mantissa exp-scale) ;; liquidationIncentiveMinMantissa = mantissaOne;
 ;; liquidationIncentiveMantissa must be no greater than this value
-(define-constant liquidation-incentive-max-mantissa (* u15 exp-scale))  ;; 1.5
+(define-constant liquidation-incentive-max-mantissa (/ (* u15 exp-scale) u10))  ;; 1.5
 
 (define-constant ERR_INVALID_ACCOUNT (err u1))
 (define-constant ERR_INVALID_STOKEN (err u2))
@@ -562,7 +562,7 @@
 ;; @dev Admin function to set a new price oracle
 ;; @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
 ;; FIXME: oracle data type and logic
-(define-public (set-price-oracle (new-oracle uint)) (ok true))
+(define-public (set-price-oracle (new-oracle uint)) (ok ERR_NO_ERROR))
 
 ;; @notice Sets the closeFactor used when liquidating borrows
 ;; @dev Admin function to set closeFactor
