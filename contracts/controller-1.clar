@@ -683,7 +683,7 @@
 )
 
 ;; SafeMath functions
-(define-private (get-exp (num uint) (denom uint))
+(define-read-only (get-exp (num uint) (denom uint))
   (let
     (
       (scaled-numerator (* num exp-scale))
@@ -692,7 +692,7 @@
   )
 )
 
-(define-private (mul-exp (a uint) (b uint))
+(define-read-only (mul-exp (a uint) (b uint))
   (let
     (
       (double-scaled-product (* a b))
@@ -702,7 +702,7 @@
   )
 )
 
-(define-private (mul-exp3 (a uint) (b uint) (c uint))
+(define-read-only (mul-exp3 (a uint) (b uint) (c uint))
   (let
     (
       (ab (mul-exp a b))
@@ -711,11 +711,11 @@
   )
 )
 
-(define-private (div-exp (a uint) (b uint))
+(define-read-only (div-exp (a uint) (b uint))
   (get-exp a b)
 )
 
-(define-private (mul-scalar-truncate (exp uint) (scalar uint))
+(define-read-only (mul-scalar-truncate (exp uint) (scalar uint))
   (let
     (
       (product (* exp scalar))
@@ -724,7 +724,7 @@
   )
 )
 
-(define-private (mul-scalar-truncate-add-uint (exp uint) (scalar uint) (addend uint))
+(define-read-only (mul-scalar-truncate-add-uint (exp uint) (scalar uint) (addend uint))
   (let
     (
       (product (* exp scalar))
@@ -733,11 +733,11 @@
   )
 )
 
-(define-private (truncate (exp uint))
+(define-read-only (truncate (exp uint))
   (/ exp exp-scale)
 )
 
 ;; Oracle functions
-(define-private (get-underlying-price (asset (optional <st-trait>)))
+(define-read-only (get-underlying-price (asset (optional <st-trait>)))
   (* u3 (pow u10 u7)) ;; 0.3 USD
 )
