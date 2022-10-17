@@ -2,6 +2,7 @@ import { Chain, types } from 'https://deno.land/x/clarinet@v1.0.2/index.ts'
 
 const CONTROLLER = 'controller-1'
 
+// Utility functions
 export async function getExp(
     chain: Chain,
     sender: string,

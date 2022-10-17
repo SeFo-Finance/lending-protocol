@@ -1,5 +1,4 @@
-import { Clarinet, Tx, Chain, Account, types } from 'https://deno.land/x/clarinet@v1.0.2/index.ts'
-import { assertEquals } from 'https://deno.land/std@0.90.0/testing/asserts.ts'
+import { Clarinet, Chain, Account } from 'https://deno.land/x/clarinet@v1.0.2/index.ts'
 import { 
     getExp,
     mulExp,
@@ -8,9 +7,10 @@ import {
     mulScalarTruncate,
     mulScalarTruncateAddUint,
     truncate,
-} from './helpers/controllerUtility-helper.ts'
+} from './helpers/controller-helper.ts'
 import { SCALAR } from './common.ts'
 
+// Utility functions
 Clarinet.test({
     name: 'Testing exponential calculation',
     async fn(chain: Chain, accounts: Map<string, Account>) {
