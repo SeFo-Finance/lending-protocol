@@ -127,3 +127,5 @@ Clarinet.test({
     truncateResult2.expectUint(0n)
   },
 })
+
+// Oracle functions

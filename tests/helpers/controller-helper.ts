@@ -2,10 +2,10 @@ import { Chain, Tx, types } from 'https://deno.land/x/clarinet@v1.0.2/index.ts'
 
 const CONTROLLER_CONTRACT = 'controller-1'
 
-export async function isController(
+export const isController = async (
   chain: Chain,
   sender: string,
-): Promise<String> {
+): Promise<String> => {
   const block = chain.mineBlock([
     Tx.contractCall(
       CONTROLLER_CONTRACT, 'is-controller', [], sender
@@ -14,14 +14,14 @@ export async function isController(
   return block.receipts[0].result.expectOk()
 }
 
-export async function mintVerify(
+export const mintVerify = async (
   chain: Chain,
   sender: string,
   stoken: string,
   minter: string,
   mintAmount: bigint,
   mintTokens: bigint,
-): Promise<String> {
+): Promise<String> => {
   const block = chain.mineBlock([
     Tx.contractCall(
       CONTROLLER_CONTRACT,
@@ -38,14 +38,14 @@ export async function mintVerify(
   return block.receipts[0].result.expectOk()
 }
 
-export async function redeemVerify(
+export const redeemVerify = async (
   chain: Chain,
   sender: string,
   stoken: string,
   redeemer: string,
   redeemAmount: bigint,
   redeemTokens: bigint,
-): Promise<String> {
+): Promise<String> => {
   const block = chain.mineBlock([
     Tx.contractCall(
       CONTROLLER_CONTRACT,
@@ -62,13 +62,13 @@ export async function redeemVerify(
   return block.receipts[0].result
 }
 
-export async function borrowVerify(
+export const borrowVerify = async (
   chain: Chain,
   sender: string,
   stoken: string,
   borrower: string,
   borrowAmount: bigint,
-): Promise<String> {
+): Promise<String> => {
   const block = chain.mineBlock([
     Tx.contractCall(
       CONTROLLER_CONTRACT,
@@ -84,7 +84,7 @@ export async function borrowVerify(
   return block.receipts[0].result.expectOk()
 }
 
-export async function repayBorrowVerify(
+export const repayBorrowVerify = async (
   chain: Chain,
   sender: string,
   stoken: string,
@@ -92,7 +92,7 @@ export async function repayBorrowVerify(
   borrower: string,
   repayAmount: bigint,
   borrowerIndex: bigint,
-): Promise<String> {
+): Promise<String> => {
   const block = chain.mineBlock([
     Tx.contractCall(
       CONTROLLER_CONTRACT,
@@ -110,7 +110,7 @@ export async function repayBorrowVerify(
   return block.receipts[0].result.expectOk()
 }
 
-export async function liquidateBorrowVerify(
+export const liquidateBorrowVerify = async (
 	chain: Chain,
 	sender: string,
 	stokenBorrowed: string,
@@ -119,7 +119,7 @@ export async function liquidateBorrowVerify(
   borrower: string,
 	repayAmount: bigint,
 	seizeTokens: bigint,
-): Promise<String> {
+): Promise<String> => {
 	const block = chain.mineBlock([
 		Tx.contractCall(
 			CONTROLLER_CONTRACT,
@@ -138,7 +138,7 @@ export async function liquidateBorrowVerify(
 	return block.receipts[0].result.expectOk()
 }
 
-export async function seizeVerify(
+export const seizeVerify = async (
 	chain: Chain,
 	sender: string,
   stokenCollateral: string,
@@ -146,7 +146,7 @@ export async function seizeVerify(
 	liquidator: string,
   borrower: string,
 	seizeTokens: bigint,
-): Promise<String> {
+): Promise<String> => {
 	const block = chain.mineBlock([
 		Tx.contractCall(
 			CONTROLLER_CONTRACT,
@@ -164,14 +164,14 @@ export async function seizeVerify(
 	return block.receipts[0].result.expectOk()
 }
 
-export async function transferVerify(
+export const transferVerify = async (
 	chain: Chain,
 	sender: string,
   stoken: string,
 	src: string,
 	dst: string,
 	transferTokens: bigint,
-): Promise<String> {
+): Promise<String> => {
 	const block = chain.mineBlock([
 		Tx.contractCall(
 			CONTROLLER_CONTRACT,
@@ -189,87 +189,89 @@ export async function transferVerify(
 }
 
 // Utility functions
-export async function getExp(
+export const getExp = async (
   chain: Chain,
   sender: string,
   num: bigint,
   denom: bigint,
-): Promise<String> {
+): Promise<String> => {
   const res = await chain.callReadOnlyFn(
     CONTROLLER_CONTRACT, 'get-exp', [types.uint(num), types.uint(denom)], sender  
   )
   return res.result
 }
 
-export async function mulExp(
+export const mulExp = async (
   chain: Chain,
   sender: string,
   a: bigint,
   b: bigint,
-): Promise<String> {
+): Promise<String> => {
   const res = await chain.callReadOnlyFn(
     CONTROLLER_CONTRACT, 'mul-exp', [types.uint(a), types.uint(b)], sender  
   )
   return res.result
 }
 
-export async function mulExp3(
+export const mulExp3 = async (
   chain: Chain,
   sender: string,
   a: bigint,
   b: bigint,
   c: bigint,
-): Promise<String> {
+): Promise<String> => {
   const res = await chain.callReadOnlyFn(
     CONTROLLER_CONTRACT, 'mul-exp3', [types.uint(a), types.uint(b), types.uint(c)], sender  
   )
   return res.result
 }
 
-export async function divExp(
+export const divExp = async (
   chain: Chain,
   sender: string,
   a: bigint,
   b: bigint,
-): Promise<String> {
+): Promise<String> => {
   const res = await chain.callReadOnlyFn(
     CONTROLLER_CONTRACT, 'div-exp', [types.uint(a), types.uint(b)], sender  
   )
   return res.result
 }
 
-export async function mulScalarTruncate(
+export const mulScalarTruncate = async (
   chain: Chain,
   sender: string,
   exp: bigint,
   scalar: bigint,
-): Promise<String> {
+): Promise<String> => {
   const res = await chain.callReadOnlyFn(
     CONTROLLER_CONTRACT, 'mul-scalar-truncate', [types.uint(exp), types.uint(scalar)], sender  
   )
   return res.result
 }
 
-export async function mulScalarTruncateAddUint(
+export const mulScalarTruncateAddUint = async (
   chain: Chain,
   sender: string,
   exp: bigint,
   scalar: bigint,
   addend: bigint,
-): Promise<String> {
+): Promise<String> => {
   const res = await chain.callReadOnlyFn(
     CONTROLLER_CONTRACT, 'mul-scalar-truncate-add-uint', [types.uint(exp), types.uint(scalar), types.uint(addend)], sender  
   )
   return res.result
 }
 
-export async function truncate(
+export const truncate = async (
   chain: Chain,
   sender: string,
   exp: bigint,
-): Promise<String> {
+): Promise<String> => {
   const res = await chain.callReadOnlyFn(
     CONTROLLER_CONTRACT, 'truncate', [types.uint(exp)], sender  
   )
   return res.result
 }
+
+// Oracle functions
