@@ -16,6 +16,8 @@ import {
   mulScalarTruncate,
   mulScalarTruncateAddUint,
   truncate,
+  // Oracle functions
+  getUnderlyingPrice,
 } from './helpers/controller-helper.ts'
 import { SCALAR } from './common.ts'
 
@@ -129,3 +131,17 @@ Clarinet.test({
 })
 
 // Oracle functions
+Clarinet.test({
+  name: 'Testing oracle utility functions',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')
+    if (!deployer) throw new Error('deployer not found')
+    const stoken = `${deployer.address}.stoken`
+    const user1 = accounts.get('wallet_1')
+    if (!user1) throw new Error('user1 not found')
+
+    // FIXME: Test trait
+    const getUnderlyingPriceResult = await getUnderlyingPrice(chain, user1.address)
+    getUnderlyingPriceResult.expectUint(3n * SCALAR / 10n)
+  },
+})

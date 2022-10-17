@@ -275,3 +275,13 @@ export const truncate = async (
 }
 
 // Oracle functions
+export const getUnderlyingPrice = async (
+  chain: Chain,
+  sender: string,
+  asset?: string,
+): Promise<String> => {
+  const res = await chain.callReadOnlyFn(
+    CONTROLLER_CONTRACT, 'get-underlying-price', [asset ? types.some(asset) : types.none()], sender  
+  )
+  return res.result
+}
