@@ -1,3 +1,4 @@
+;; (use-trait st-trait .stoken-trait.stoken-trait)
 
 (define-trait controller-trait
   (
@@ -30,9 +31,9 @@
     (transfer-verify (principal principal principal uint) (response bool uint))
 
     ;; Liquidity/Liquidation Calculations
-    (liquidate-calculate-seize-tokens
-      (principal principal uint)
-      (response {error: uint, seize-tokens: uint} uint)
-    )
+    ;; (liquidate-calculate-seize-tokens
+    ;;   (<st-trait> <st-trait> uint)
+    ;;   (response {error: uint, seize-tokens: uint} uint)
+    ;; )
   )
 )

@@ -22,7 +22,6 @@
 ;; FIXME (default value): Max number of assets a single account can participate in (borrow or use as collateral)
 (define-data-var max-assets uint u0)
 ;; Per-account mapping of "assets you are in", capped by max-assets
-;; (define-map account-assets principal (list 100 <st-trait>))
 (define-map account-assets principal (list 100 principal))
 
 ;; ComptrollerG1 variables
@@ -36,19 +35,20 @@
   { stoken: principal, account: principal }
   bool
 )
-;; closeFactorMantissa must be strictly greater than this value
-(define-constant close-factor-min-mantissa (* 5 (pow u10 u16)))  ;; 0.05
-;; closeFactorMantissa must not exceed this value
-(define-constant close-factor-max-mantissa (* 9 (pow u10 u17)))  ;; 0.9
-;; No collateralFactorMantissa may exceed this value
-(define-constant collateral-factor-max-mantissa (* 9 (pow u10 u17)))  ;; 0.9
-;; liquidationIncentiveMantissa must be no less than this value
-(define-constant liquidation-incentive-min-mantissa (pow u10 u18)) ;; liquidationIncentiveMinMantissa = mantissaOne;
-;; liquidationIncentiveMantissa must be no greater than this value
-(define-constant liquidation-incentive-max-mantissa (* 15 (pow u10 u18)))  ;; 1.5
 
-(define-constant exp-scale (pow u10 u18))
-(define-constant half-exp-scale (/ (var-get exp-scale) u2))
+(define-constant exp-scale (pow u10 u8))
+(define-constant half-exp-scale (/ exp-scale u2))
+
+;; closeFactorMantissa must be strictly greater than this value
+(define-constant close-factor-min-mantissa (* u5 (pow u10 u6)))  ;; 0.05
+;; closeFactorMantissa must not exceed this value
+(define-constant close-factor-max-mantissa (* u9 (pow u10 u7)))  ;; 0.9
+;; No collateralFactorMantissa may exceed this value
+(define-constant collateral-factor-max-mantissa (* u9 (pow u10 u7)))  ;; 0.9
+;; liquidationIncentiveMantissa must be no less than this value
+(define-constant liquidation-incentive-min-mantissa exp-scale) ;; liquidationIncentiveMinMantissa = mantissaOne;
+;; liquidationIncentiveMantissa must be no greater than this value
+(define-constant liquidation-incentive-max-mantissa (* u15 exp-scale))  ;; 1.5
 
 (define-constant ERR_INVALID_ACCOUNT (err u1))
 (define-constant ERR_INVALID_STOKEN (err u2))
@@ -87,7 +87,7 @@
 (define-public (get-assets-in (account principal))
   (let
     (
-      (assets-in (unwrap! (map-get? account-assets account) (err ERR_INVALID_ACCOUNT)))
+      (assets-in (unwrap! (map-get? account-assets account) ERR_INVALID_ACCOUNT))
     )
     (ok assets-in)
   )
@@ -101,7 +101,7 @@
   (let
     (
       (stoken-contract (contract-of stoken))
-      (membership (try! (get-markets-account-membership stoken-contract account)))
+      (membership (get-markets-account-membership stoken-contract account))
     )
     (ok membership)
   )
@@ -122,18 +122,18 @@
 (define-private (check-enter-markets (stoken principal))
   (let
     (
-      (market-to-join (try! (get-market stoken)))
+      (market-to-join (get-market stoken))
     )
     (if (not (get is-listed market-to-join))
-      (err ERR_MARKET_NOT_LISTED)
-      (if (try! (get-markets-account-membership stoken tx-sender))
-        (err ERR_NO_ERROR)
-        (if (>= (len (unwrap! (map-get? account-assets tx-sender) (err ERR_INVALID_ACCOUNT))) (var-get max-assets))
-          (err ERR_TOO_MANY_ASSETS)
+      ERR_MARKET_NOT_LISTED
+      (if (get-markets-account-membership stoken tx-sender)
+        ERR_NO_ERROR
+        (if (>= (len (unwrap-panic (map-get? account-assets tx-sender))) (var-get max-assets))
+          ERR_TOO_MANY_ASSETS
           (begin
             (map-set markets-account-membership { stoken: stoken, account: tx-sender } true)
             ;; FIXME: accountAssets[msg.sender].push(cToken);
-            (ok ERR_NO_ERROR)
+            ERR_NO_ERROR
           )
         )
       )
@@ -142,11 +142,8 @@
 )
 
 (define-public (exit-market (stoken-address principal))
-  (let
-    (
-
-    )
-  )
+  ;; FIXME
+  (ok ERR_NO_ERROR)
 )
 
 ;; Policy Hooks
@@ -162,7 +159,7 @@
   )
   (let
     (
-      (market (try! (get-market stoken)))
+      (market (get-market stoken))
     )
     (ok (if (not (get is-listed market)) ERR_MARKET_NOT_LISTED ERR_NO_ERROR))
   )
@@ -206,17 +203,17 @@
   )
   (let
     (
-      (market (try! (get-market stoken)))
+      (market (get-market stoken))
     )
     (if (not (get is-listed market))
       (err ERR_MARKET_NOT_LISTED)
-      (if (not (try! (get-markets-account-membership stoken tx-sender)))
+      (if (not (get-markets-account-membership stoken tx-sender))
         (err ERR_NO_ERROR)
         (let
           (
-            (liquidity-result (try! (get-hypothetical-account-liquidity-internal redeemer stoken redeem-tokens u0)))
+            (liquidity-result (try! (get-hypothetical-account-liquidity-internal redeemer (some stoken) redeem-tokens u0)))
           )
-          (if (not (is-eq (get error liquidity-result) (err ERR_NO_ERROR)))
+          (if (not (is-eq (get error liquidity-result) ERR_NO_ERROR))
             (err (get error liquidity-result))
             (if (> (get shortfall liquidity-result) u0)
               (err ERR_INSUFFICIENT_LIQUIDITY)
@@ -242,7 +239,7 @@
   )
   (begin
     (if (and (is-eq redeem-tokens u0) (> redeem-amount u0))
-      (err ERR_REDEEM_TOKENS_ZERO)
+      ERR_REDEEM_TOKENS_ZERO
       (ok true)
     )
   )
@@ -260,15 +257,14 @@
   )
   (let
     (
-      (market (try! (get-market stoken)))
+      (market (get-market stoken))
     )
     (if (not (get is-listed market))
       (err ERR_MARKET_NOT_LISTED)
-      (if (not (try! (get-markets-account-membership stoken borrower)))
+      (if (not (get-markets-account-membership stoken borrower))
         (err ERR_MARKET_NOT_ENTERED)
-        (if ()
-        
-        )
+        ;; FIXME
+        (ok ERR_NO_ERROR)
       )
     )
   )
@@ -303,7 +299,7 @@
   )
   (let
     (
-      (market (try! (get-market stoken)))
+      (market (get-market stoken))
     )
     (ok (if (not (get is-listed market)) ERR_MARKET_NOT_LISTED ERR_NO_ERROR))
   )
@@ -342,13 +338,14 @@
   )
   (let
     (
-      (market-borrowed (try! (get-market stoken-borrowed)))
-      (market-collateral (try! (get-market stoken-collateral)))
+      (market-borrowed (get-market stoken-borrowed))
+      (market-collateral (get-market stoken-collateral))
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
       (err ERR_MARKET_NOT_LISTED)
       (begin
-      
+        ;; FIXME
+        (ok ERR_NO_ERROR)
       )
     )
   )
@@ -389,12 +386,12 @@
   )
   (let
     (
-      (market-borrowed (try! (get-market stoken-borrowed)))
-      (market-collateral (try! (get-market stoken-collateral)))
+      (market-borrowed (get-market stoken-borrowed))
+      (market-collateral (get-market stoken-collateral))
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
       (err ERR_MARKET_NOT_LISTED)
-      (if (false)
+      (if false
         (err ERR_CONTROLLER_MISMATCH)
         (ok ERR_NO_ERROR)
       )
@@ -434,7 +431,8 @@
     (transfer-tokens uint)
   )
   (begin
-
+    ;; FIXME
+    (ok ERR_NO_ERROR)
   )
 )
 
@@ -459,7 +457,7 @@
 ;; @return (possible error code (semi-opaque),
 ;;          account liquidity in excess of collateral requirements,
 ;;          account shortfall below collateral requirements)
-(define-read-only (get-account-liquidity (account principal))
+(define-public (get-account-liquidity (account principal))
   (ok (try! (get-hypothetical-account-liquidity-internal account none u0 u0)))
 )
 
@@ -483,58 +481,47 @@
 ;;          hypothetical account shortfall below collateral requirements)
 (define-private (get-hypothetical-account-liquidity-internal
     (account principal)
-    (stoken-modify (optional <st-trait>))
+    (stoken-modify (optional principal))
     (redeem-tokens uint)
     (borrow-amount uint)
   )
   (let
     (
-      (assets (unwrap! (map-get? account-assets account) (err ERR_INVALID_ACCOUNT)))
-      (asset (try! (element-at assets u0)))
-      (account-snapshot-result (unwrap! (contract-call? asset get-account-snapshot account) (err ERR_UNKNOWN)))
-      (sum-collateral u0)
-      (sum-borrow-plus-effects u0)
+      (account-snapshot-result (unwrap! (contract-call? .stoken-registry get-account-snapshot account) ERR_UNKNOWN))
+      ;; FIXME: stacks token price
+      (oracle-price-mantissa (get-underlying-price none))
     )
-    (if (not (is-eq ((get error account-snapshot-result) u0)))
-      (ok { error: ERR_SNAPSHOT_ERROR, liquidity: u0, shortfall: u0 })
-      (let
-        (
-          (oracle-price-mantissa (try! (get-underlying-price asset)))
-        )
-        (if (is-eq oracle-price-mantissa u0)
-          (ok { error: ERR_PRICE_ERROR, liquidity: u0, shortfall: u0 })
-          (let
-            (
-              (asset-principal (contract-of asset))
-              (market (try! (get-market asset-principal)))
-              (token-to-ether (try! (mul-exp3 (get collateral-factor-mantissa market) (get exchange-rate-mantissa (var-get account-snapshot-result)) (var-get oracle-price-mantissa))))
-            )
-            (begin
-              ;; FIXME?: sum-collateral, sum-borrow-plus-effects
-              (var-set sum-collateral (try! (mul-scalar-truncate-add-uint (var-get token-to-ether) (get stoken-balance (var-get account-snapshot-result)) (var-get sum-collateral))))
-              (var-set sum-borrow-plus-effects (try! (mul-scalar-truncate-add-uint (var-get oracle-price-mantissa) (get borrow-balance (var-get account-snapshot-result)) (var-get sum-borrow-plus-effects))))
+    ;; FIXME: check control flow correctness
+    (if (is-eq oracle-price-mantissa u0)
+        (ok { error: ERR_PRICE_ERROR, liquidity: u0, shortfall: u0 })
+        (let
+          (
+            (market (get-market .stoken))
+            (token-to-ether (mul-exp3 (get collateral-factor-mantissa market) (get exchange-rate account-snapshot-result) oracle-price-mantissa))
 
-              (if (is-eq asset (try! stoken-modify))
-                (begin
-                  ;; FIXME?: sum-borrow-plus-effects
-                  (var-set sum-borrow-plus-effects (try! (mul-scalar-truncate-add-uint (var-get token-to-ether) redeem-tokens (var-get sum-borrow-plus-effects))))
-                  (var-set sum-borrow-plus-effects (try! (mul-scalar-truncate-add-uint (var-get oracle-price-mantissa) (get borrow-balance (var-get account-snapshot-result)) (var-get sum-borrow-plus-effects))))
-
-                  (if (> (var-get sum-collateral) (var-get sum-borrow-plus-effects))
-                    (ok { error: ERR_NO_ERROR, liquidity: (- (var-get sum-collateral) (var-get sum-borrow-plus-effects)), shortfall: u0 })
-                    (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- (var-get sum-borrow-plus-effects) (var-get sum-collateral)) })
-                  )
-                )
-                (if (> (var-get sum-collateral) (var-get sum-borrow-plus-effects))
-                  (ok { error: ERR_NO_ERROR, liquidity: (- (var-get sum-collateral) (var-get sum-borrow-plus-effects)), shortfall: u0 })
-                  (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- (var-get sum-borrow-plus-effects) (var-get sum-collateral)) })
-                )
+            ;; FIXME?: sum-collateral, sum-borrow-plus-effects
+            (sum-collateral (mul-scalar-truncate-add-uint token-to-ether (get stoken-balance account-snapshot-result) u0))
+            (sum-borrow-plus-effects (mul-scalar-truncate-add-uint oracle-price-mantissa (get borrow-balance account-snapshot-result) u0))
+          )
+          (if (is-eq .stoken (unwrap-panic stoken-modify))
+            (let
+              (
+                ;; FIXME?: sum-borrow-plus-effects
+                (sum-borrow-plus-effects-1 (mul-scalar-truncate-add-uint token-to-ether redeem-tokens sum-borrow-plus-effects))
+                (sum-borrow-plus-effects-2 (mul-scalar-truncate-add-uint oracle-price-mantissa (get borrow-balance account-snapshot-result) sum-borrow-plus-effects-1))
               )
+              (if (> sum-collateral sum-borrow-plus-effects-2)
+                (ok { error: ERR_NO_ERROR, liquidity: (- sum-collateral sum-borrow-plus-effects-2), shortfall: u0 })
+                (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- sum-borrow-plus-effects-2 sum-collateral) })
+              )
+            )
+            (if (> sum-collateral sum-borrow-plus-effects)
+              (ok { error: ERR_NO_ERROR, liquidity: (- sum-collateral sum-borrow-plus-effects), shortfall: u0 })
+              (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- sum-borrow-plus-effects sum-collateral) })
             )
           )
         )
       )
-    )
   )
 )
 
@@ -551,18 +538,18 @@
   )
   (let
     (
-      (price-borrowed-mantissa (try! (get-underlying-price stoken-borrowed)))
-      (price-collateral-mantissa (try! (get-underlying-price stoken-collateral)))
+      (price-borrowed-mantissa (get-underlying-price (some stoken-borrowed)))
+      (price-collateral-mantissa (get-underlying-price (some stoken-collateral)))
     )
     (if (or (is-eq price-borrowed-mantissa u0) (is-eq price-collateral-mantissa u0))
       (ok { error: ERR_PRICE_ERROR, seize-tokens: u0 })
       (let
         (
-          (exchange-rate-mantissa (unwrap! (contract-call? stoken-collateral exchange-rate-stored) (err ERR_UNKNOWN)))
-          (numerator (try! (mul-exp (var-get liquidation-incentive-mantissa) (var-get price-borrowed-mantissa))))
-          (denominator (try! (mul-exp (var-get price-collateral-mantissa) exchange-rate-mantissa)))
-          (ratio (try! (div-exp numerator denominator)))
-          (seize-tokens (try! (mul-scalar-truncate ratio actual-repay-amount)))
+          (exchange-rate-mantissa (unwrap! (contract-call? stoken-collateral exchange-rate-current) ERR_UNKNOWN))
+          (numerator (mul-exp (var-get liquidation-incentive-mantissa) price-borrowed-mantissa))
+          (denominator (mul-exp price-collateral-mantissa exchange-rate-mantissa))
+          (ratio (div-exp numerator denominator))
+          (seize-tokens (mul-scalar-truncate ratio actual-repay-amount))
         )
         (ok { error: ERR_NO_ERROR, seize-tokens: seize-tokens })
       )
@@ -586,8 +573,8 @@
     (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
     (let
       (
-        (low-limit (var-get close-factor-min-mantissa))
-        (high-limit (var-get close-factor-max-mantissa))
+        (low-limit close-factor-min-mantissa)
+        (high-limit close-factor-max-mantissa)
       )
       (if (<= new-close-factor-mantissa low-limit)
         (err ERR_INVALID_CLOSE_FACTOR)
@@ -609,26 +596,26 @@
 ;; @param newCollateralFactorMantissa The new collateral factor, scaled by 1e18
 ;; @return uint 0=success, otherwise a failure. (See ErrorReporter for details)
 (define-public (set-collateral-factor
-    (stoken <st-trait>)
+    (stoken principal)
     (new-collateral-factor-mantissa uint)
   )
   (begin
     (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
     (let
       (
-        (market (try! (get-market stoken)))
+        (market (get-market stoken))
       )
       (if (not (get is-listed market))
         (err ERR_MARKET_NOT_LISTED)
         (let
           (
-            (high-limit (var-get collateral-factor-max-mantissaa))
+            (high-limit collateral-factor-max-mantissa)
           )
           (if (< high-limit new-collateral-factor-mantissa)
             (err ERR_INVALID_COLLATERAL_FACTOR)
             (let
               (
-                (price (try! (get-underlying-price stoken)))
+                (price (get-underlying-price none))
               )
               (if (and (not (is-eq new-collateral-factor-mantissa u0)) (is-eq price u0))
                 (err ERR_PRICE_ERROR)
@@ -664,13 +651,13 @@
 ;; @dev Admin function to set liquidationIncentive
 ;; @param newLiquidationIncentiveMantissa New liquidationIncentive scaled by 1e18
 ;; @return uint 0=success, otherwise a failure. (See ErrorReporter for details)
-(define-public (set-liquidation-incentive (new-liquidation-incentive-mantissa))
+(define-public (set-liquidation-incentive (new-liquidation-incentive-mantissa uint))
   (begin
     (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
     (let
       (
-        (min-liquidation-incentive (var-get liquidation-incentive-min-mantissa))
-        (max-liquidation-incentive (var-get liquidation-incentive-max-mantissa))
+        (min-liquidation-incentive liquidation-incentive-min-mantissa)
+        (max-liquidation-incentive liquidation-incentive-max-mantissa)
       )
       (if (< new-liquidation-incentive-mantissa min-liquidation-incentive)
         (err ERR_INVALID_LIQUIDATION_INCENTIVE)
@@ -688,25 +675,20 @@
 
 ;; Utility functions
 (define-private (get-market (stoken principal))
-  (begin
-    (ok (unwrap! (map-get? markets stoken) (err ERR_INVALID_STOKEN)))
-  )
+  (unwrap-panic (map-get? markets stoken))
 )
 
 (define-private (get-markets-account-membership (stoken principal) (account principal))
-  (begin
-    (ok (unwrap! (map-get? markets-account-membership { stoken: stoken, account: account }) (err ERR_INVALID_ACCOUNT_OR_STOKEN)))
-  )
+  (unwrap-panic (map-get? markets-account-membership { stoken: stoken, account: account }))
 )
 
 ;; SafeMath functions
 (define-private (get-exp (num uint) (denom uint))
   (let
     (
-      (scaled-numerator (* num (var-get exp-scale)))
-      (rational (/ scaled-numerator denom))
+      (scaled-numerator (* num exp-scale))
     )
-    (ok rational)
+    (/ scaled-numerator denom)
   )
 )
 
@@ -714,23 +696,23 @@
   (let
     (
       (double-scaled-product (* a b))
-      (double-scaled-product-with-half-scale (+ double-scaled-product (var-get half-exp-scale)))
+      (double-scaled-product-with-half-scale (+ double-scaled-product half-exp-scale))
     )
-    (ok (/ double-scaled-product-with-half-scale (var-get exp-scale)))
+    (/ double-scaled-product-with-half-scale exp-scale)
   )
 )
 
 (define-private (mul-exp3 (a uint) (b uint) (c uint))
   (let
     (
-      (ab (try! (mul-exp a b)))
+      (ab (mul-exp a b))
     )
-    (ok (try! (mul-exp ab c)))
+    (mul-exp ab c)
   )
 )
 
 (define-private (div-exp (a uint) (b uint))
-  (ok (try! (get-exp a b)))
+  (get-exp a b)
 )
 
 (define-private (mul-scalar-truncate (exp uint) (scalar uint))
@@ -738,7 +720,7 @@
     (
       (product (* exp scalar))
     )
-    (ok (try! (truncate product)))
+    (truncate product)
   )
 )
 
@@ -747,15 +729,15 @@
     (
       (product (* exp scalar))
     )
-    (ok (+ (try! (truncate product)) addend))
+    (+ (truncate product) addend)
   )
 )
 
 (define-private (truncate (exp uint))
-  (ok (/ exp (var-get exp-scale)))
+  (/ exp exp-scale)
 )
 
 ;; Oracle functions
-(define-private (get-underlying-price (asset <st-trait>))
-  (ok (* 3 (pow u10 u17)))
+(define-private (get-underlying-price (asset (optional <st-trait>)))
+  (* u3 (pow u10 u7)) ;; 0.3 USD
 )
