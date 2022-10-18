@@ -10,11 +10,14 @@ import {
   liquidateBorrowVerify,
   seizeVerify,
   transferVerify,
+  // Getter functions
+  getMarket,
   // Admin setter functions
   setCloseFactor,
   setCollateralFactor,
   setMaxAssets,
   setLiquidationIncentive,
+  supportMarket,
   // Utility functions
   getExp,
   mulExp,
@@ -29,6 +32,7 @@ import {
 } from './helpers/controller-helper.ts'
 import { SCALAR } from './common.ts'
 
+// Authorization functions
 Clarinet.test({
   name: 'Testing authorization functions',
   async fn(chain: Chain, accounts: Map<string, Account>) {
@@ -40,6 +44,7 @@ Clarinet.test({
   },
 })
 
+// Verification functions
 Clarinet.test({
   name: 'Testing verification functions',
   async fn(chain: Chain, accounts: Map<string, Account>) {
@@ -108,6 +113,19 @@ Clarinet.test({
   },
 })
 
+// Allowance functions
+Clarinet.test({
+  name: 'Testing allowance functions',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')
+    if (!deployer) throw new Error('deployer not found')
+    const stoken = `${deployer.address}.stoken`
+    const user1 = accounts.get('wallet_1')
+    const user2 = accounts.get('wallet_2')
+    if (!user1 || !user2) throw new Error('user1 or user2 not found')
+  },
+})
+
 // Admin setter functions
 const CLOSE_FACTOR_MIN_MANTISSA = 5n * SCALAR / 100n           // 0.05
 const CLOSE_FACTOR_MAX_MANTISSA = 9n * SCALAR / 10n            // 0.9
@@ -119,8 +137,23 @@ Clarinet.test({
   async fn(chain: Chain, accounts: Map<string, Account>) {
     const admin = accounts.get('deployer')
     if (!admin) throw new Error('admin not found')
+    const stoken = `${admin.address}.stoken`
     const user1 = accounts.get('wallet_1')
     if (!user1) throw new Error('user1 not found')
+
+    /* supportMarket */
+    const supportMarketCheckAdminResult = await supportMarket(chain, user1.address, stoken)
+    supportMarketCheckAdminResult.expectErr().expectUint(1n)
+
+    const supportMarketResult1 = await supportMarket(chain, admin.address, stoken)
+    supportMarketResult1.expectOk().expectUint(0n)
+
+    const getMarketResult = await getMarket(chain, admin.address, stoken)
+    getMarketResult.expectOk().expectTuple()
+    console.log(getMarketResult)
+
+    const supportMarketResult2 = await supportMarket(chain, admin.address, stoken)
+    supportMarketResult2.expectErr().expectUint(10n)
 
     /* setCloseFactor */
     const setCloseFactorCheckAdminResult = await setCloseFactor(chain, user1.address, SCALAR)
@@ -138,6 +171,11 @@ Clarinet.test({
     setCloseFactorSuccessResult.expectOk().expectUint(0n)
 
     // FIXME: setCollateralFactor
+    const setCollateralFactorCheckAdminResult = await setCollateralFactor(chain, user1.address, stoken, 8n * SCALAR / 10n)
+    setCollateralFactorCheckAdminResult.expectErr().expectUint(1n)
+
+    // const setCollateralFactorResult = await setCollateralFactor(chain, admin.address, stoken, 8n * SCALAR / 10n)
+    // setCollateralFactorResult.expectErr().expectUint(1n)
 
     /* setMaxAssets */
     const setMaxAssetsCheckAdminResult = await setMaxAssets(chain, user1.address, 10n)

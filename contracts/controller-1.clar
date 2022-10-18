@@ -122,7 +122,7 @@
 (define-private (check-enter-markets (stoken principal))
   (let
     (
-      (market-to-join (get-market stoken))
+      (market-to-join (unwrap-panic (get-market stoken)))
     )
     (if (not (get is-listed market-to-join))
       ERR_MARKET_NOT_LISTED
@@ -159,7 +159,7 @@
   )
   (let
     (
-      (market (get-market stoken))
+      (market (unwrap-panic (get-market stoken)))
     )
     (ok (if (not (get is-listed market)) ERR_MARKET_NOT_LISTED ERR_NO_ERROR))
   )
@@ -203,7 +203,7 @@
   )
   (let
     (
-      (market (get-market stoken))
+      (market (unwrap-panic (get-market stoken)))
     )
     (if (not (get is-listed market))
       (err ERR_MARKET_NOT_LISTED)
@@ -257,7 +257,7 @@
   )
   (let
     (
-      (market (get-market stoken))
+      (market (unwrap-panic (get-market stoken)))
     )
     (if (not (get is-listed market))
       (err ERR_MARKET_NOT_LISTED)
@@ -299,7 +299,7 @@
   )
   (let
     (
-      (market (get-market stoken))
+      (market (unwrap-panic (get-market stoken)))
     )
     (ok (if (not (get is-listed market)) ERR_MARKET_NOT_LISTED ERR_NO_ERROR))
   )
@@ -338,8 +338,8 @@
   )
   (let
     (
-      (market-borrowed (get-market stoken-borrowed))
-      (market-collateral (get-market stoken-collateral))
+      (market-borrowed (unwrap-panic (get-market stoken-borrowed)))
+      (market-collateral (unwrap-panic (get-market stoken-collateral)))
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
       (err ERR_MARKET_NOT_LISTED)
@@ -386,8 +386,8 @@
   )
   (let
     (
-      (market-borrowed (get-market stoken-borrowed))
-      (market-collateral (get-market stoken-collateral))
+      (market-borrowed (unwrap-panic (get-market stoken-borrowed)))
+      (market-collateral (unwrap-panic (get-market stoken-collateral)))
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
       (err ERR_MARKET_NOT_LISTED)
@@ -496,7 +496,7 @@
         (ok { error: ERR_PRICE_ERROR, liquidity: u0, shortfall: u0 })
         (let
           (
-            (market (get-market .stoken))
+            (market (unwrap-panic (get-market .stoken)))
             (token-to-ether (mul-exp3 (get collateral-factor-mantissa market) (get exchange-rate account-snapshot-result) oracle-price-mantissa))
 
             ;; FIXME?: sum-collateral, sum-borrow-plus-effects
@@ -603,7 +603,7 @@
     (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
     (let
       (
-        (market (get-market stoken))
+        (market (unwrap-panic (get-market stoken)))
       )
       (if (not (get is-listed market))
         (err ERR_MARKET_NOT_LISTED)
@@ -673,9 +673,42 @@
   )
 )
 
+;; @notice Add the market to the markets mapping and set it as listed
+;; @dev Admin function to set isListed and add support for the market
+;; @param cToken The address of the market (token) to list
+;; @return uint 0=success, otherwise a failure. (See enum Error for details)
+(define-public (support-market (stoken principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
+    (let
+      (
+        (market (get-market stoken))
+      )
+      (if (is-ok market)
+        (err ERR_MARKET_ALREADY_LISTED)
+        (let
+          (
+            (new-market { is-listed: true, collateral-factor-mantissa: u0 })
+          )
+          (map-set markets stoken new-market)
+          (ok ERR_NO_ERROR)
+        )
+      )
+    )
+  )
+)
+
 ;; Utility functions
-(define-private (get-market (stoken principal))
-  (unwrap-panic (map-get? markets stoken))
+(define-public (get-market (stoken principal))
+  (let
+    (
+      (market (map-get? markets stoken))
+    )
+    (if (is-none market)
+      (err ERR_MARKET_NOT_LISTED)
+      (ok (unwrap-panic market))
+    )
+  )
 )
 
 (define-private (get-markets-account-membership (stoken principal) (account principal))
