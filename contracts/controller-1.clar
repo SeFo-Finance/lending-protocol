@@ -159,9 +159,12 @@
   )
   (let
     (
-      (market (unwrap-panic (get-market stoken)))
+      (market (try! (get-market stoken)))
     )
-    (ok (if (not (get is-listed market)) ERR_MARKET_NOT_LISTED ERR_NO_ERROR))
+    (if (not (get is-listed market))
+      (err ERR_MARKET_NOT_LISTED)
+      (ok ERR_NO_ERROR)
+    )
   )
 )
 
@@ -191,9 +194,7 @@
     (redeemer principal)
     (redeem-tokens uint)
   )
-  (begin
-    (ok (try! (redeem-allowed-internal stoken redeemer redeem-tokens)))
-  )
+  (redeem-allowed-internal stoken redeemer redeem-tokens)
 )
 
 (define-private (redeem-allowed-internal
@@ -203,7 +204,7 @@
   )
   (let
     (
-      (market (unwrap-panic (get-market stoken)))
+      (market (try! (get-market stoken)))
     )
     (if (not (get is-listed market))
       (err ERR_MARKET_NOT_LISTED)
@@ -257,7 +258,7 @@
   )
   (let
     (
-      (market (unwrap-panic (get-market stoken)))
+      (market (try! (get-market stoken)))
     )
     (if (not (get is-listed market))
       (err ERR_MARKET_NOT_LISTED)
@@ -299,9 +300,12 @@
   )
   (let
     (
-      (market (unwrap-panic (get-market stoken)))
+      (market (try! (get-market stoken)))
     )
-    (ok (if (not (get is-listed market)) ERR_MARKET_NOT_LISTED ERR_NO_ERROR))
+    (if (not (get is-listed market))
+      (err ERR_MARKET_NOT_LISTED)
+      (ok ERR_NO_ERROR)
+    )
   )
 )
 
@@ -338,8 +342,8 @@
   )
   (let
     (
-      (market-borrowed (unwrap-panic (get-market stoken-borrowed)))
-      (market-collateral (unwrap-panic (get-market stoken-collateral)))
+      (market-borrowed (try! (get-market stoken-borrowed)))
+      (market-collateral (try! (get-market stoken-collateral)))
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
       (err ERR_MARKET_NOT_LISTED)
@@ -386,8 +390,8 @@
   )
   (let
     (
-      (market-borrowed (unwrap-panic (get-market stoken-borrowed)))
-      (market-collateral (unwrap-panic (get-market stoken-collateral)))
+      (market-borrowed (try! (get-market stoken-borrowed)))
+      (market-collateral (try! (get-market stoken-collateral)))
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
       (err ERR_MARKET_NOT_LISTED)
@@ -603,7 +607,7 @@
     (asserts! (is-eq tx-sender (var-get admin)) (err ERR_UNAUTHORIZED))
     (let
       (
-        (market (unwrap-panic (get-market stoken)))
+        (market (try! (get-market stoken)))
       )
       (if (not (get is-listed market))
         (err ERR_MARKET_NOT_LISTED)

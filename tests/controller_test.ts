@@ -10,6 +10,8 @@ import {
   liquidateBorrowVerify,
   seizeVerify,
   transferVerify,
+  // Allowance functions
+  mintAllowed,
   // Getter functions
   getMarket,
   // Admin setter functions
@@ -123,6 +125,17 @@ Clarinet.test({
     const user1 = accounts.get('wallet_1')
     const user2 = accounts.get('wallet_2')
     if (!user1 || !user2) throw new Error('user1 or user2 not found')
+
+    // Initialize market
+    await supportMarket(chain, deployer.address, stoken)
+
+    /* mint-allowed */
+    const mintAllowedResult = await mintAllowed(chain, user1.address, stoken, user1.address, 87n * SCALAR)
+    mintAllowedResult.expectOk().expectUint(0n)
+
+    const mintAllowedFailed = await mintAllowed(chain, user1.address, user2.address, user1.address, 87n * SCALAR)
+    mintAllowedFailed.expectErr().expectUint(9n)
+
   },
 })
 
@@ -141,7 +154,7 @@ Clarinet.test({
     const user1 = accounts.get('wallet_1')
     if (!user1) throw new Error('user1 not found')
 
-    /* supportMarket */
+    /* support-market */
     const supportMarketCheckAdminResult = await supportMarket(chain, user1.address, stoken)
     supportMarketCheckAdminResult.expectErr().expectUint(1n)
 
@@ -154,7 +167,7 @@ Clarinet.test({
     const supportMarketResult2 = await supportMarket(chain, admin.address, stoken)
     supportMarketResult2.expectErr().expectUint(10n)
 
-    /* setCloseFactor */
+    /* set-close-factor */
     const setCloseFactorCheckAdminResult = await setCloseFactor(chain, user1.address, SCALAR)
     setCloseFactorCheckAdminResult.expectErr().expectUint(1n)
 
@@ -169,7 +182,7 @@ Clarinet.test({
     const setCloseFactorSuccessResult = await setCloseFactor(chain, admin.address, 8n * SCALAR / 10n)
     setCloseFactorSuccessResult.expectOk().expectUint(0n)
 
-    /* setCollateralFactor */
+    /* set-collateral-factor */
     const setCollateralFactorCheckAdminResult = await setCollateralFactor(chain, user1.address, stoken, 8n * SCALAR / 10n)
     setCollateralFactorCheckAdminResult.expectErr().expectUint(1n)
 
@@ -180,14 +193,14 @@ Clarinet.test({
     const setCollateralFactorFailedResult = await setCollateralFactor(chain, admin.address, stoken, 95n * SCALAR / 100n)
     setCollateralFactorFailedResult.expectErr().expectUint(6n)
 
-    /* setMaxAssets */
+    /* set-max-assets */
     const setMaxAssetsCheckAdminResult = await setMaxAssets(chain, user1.address, 10n)
     setMaxAssetsCheckAdminResult.expectErr().expectUint(1n)
 
     const setMaxAssetsSuccessResult = await setMaxAssets(chain, admin.address, 10n)
     setMaxAssetsSuccessResult.expectOk().expectUint(0n)
 
-    /* setLiquidationIncentive */
+    /* set-liquidation-incentive */
     const setLiquidationIncentiveCheckAdminResult = await setLiquidationIncentive(chain, user1.address, SCALAR)
     setLiquidationIncentiveCheckAdminResult.expectErr().expectUint(1n)
 

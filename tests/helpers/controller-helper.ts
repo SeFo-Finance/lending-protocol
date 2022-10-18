@@ -191,6 +191,27 @@ export const transferVerify = async (
 }
 
 // Allowance functions
+export const mintAllowed = async (
+  chain: Chain,
+  sender: string,
+  stoken: string,
+  minter: string,
+  mintAmount: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
+      'mint-allowed',
+      [
+        types.principal(stoken),
+        types.principal(minter),
+        types.uint(mintAmount),
+      ],
+      sender,
+    )
+  ])
+  return block.receipts[0].result
+}
 
 // Getter functions
 export const getMarket = async (
