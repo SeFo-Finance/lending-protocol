@@ -150,7 +150,6 @@ Clarinet.test({
 
     const getMarketResult = await getMarket(chain, admin.address, stoken)
     getMarketResult.expectOk().expectTuple()
-    console.log(getMarketResult)
 
     const supportMarketResult2 = await supportMarket(chain, admin.address, stoken)
     supportMarketResult2.expectErr().expectUint(10n)
@@ -170,12 +169,16 @@ Clarinet.test({
     const setCloseFactorSuccessResult = await setCloseFactor(chain, admin.address, 8n * SCALAR / 10n)
     setCloseFactorSuccessResult.expectOk().expectUint(0n)
 
-    // FIXME: setCollateralFactor
+    /* setCollateralFactor */
     const setCollateralFactorCheckAdminResult = await setCollateralFactor(chain, user1.address, stoken, 8n * SCALAR / 10n)
     setCollateralFactorCheckAdminResult.expectErr().expectUint(1n)
 
-    // const setCollateralFactorResult = await setCollateralFactor(chain, admin.address, stoken, 8n * SCALAR / 10n)
-    // setCollateralFactorResult.expectErr().expectUint(1n)
+    const setCollateralFactorResult = await setCollateralFactor(chain, admin.address, stoken, 8n * SCALAR / 10n)
+    setCollateralFactorResult.expectOk().expectUint(0n)
+
+    // > 0.9
+    const setCollateralFactorFailedResult = await setCollateralFactor(chain, admin.address, stoken, 95n * SCALAR / 100n)
+    setCollateralFactorFailedResult.expectErr().expectUint(6n)
 
     /* setMaxAssets */
     const setMaxAssetsCheckAdminResult = await setMaxAssets(chain, user1.address, 10n)
