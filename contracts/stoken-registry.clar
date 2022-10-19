@@ -195,7 +195,7 @@
             err-div-scalar))) 
         (ok token-balance)))
 
-(define-public (despoit-and-mint (amount uint)) 
+(define-public (deposit-and-mint (amount uint))
     (begin 
         (asserts! (try! (accrue-interest)) err-accrue-interest)
         ;; to-do:controller verify

@@ -1,4 +1,4 @@
-(use-trait stoken-trait .stoken-trait.stoken-trait)
+;; (use-trait stoken-trait .stoken-trait.stoken-trait)
 ;; scoin-trait
 ;; <add a description here>
 

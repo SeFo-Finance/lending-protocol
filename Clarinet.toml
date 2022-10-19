@@ -28,6 +28,7 @@ depends_on = ["sip-010-ft-trait"]
 
 [contracts.stoken-registry-trait]
 path = "contracts/traits/stoken-registry-trait.clar"
+depends_on = ["controller-trait","interest-rate-trait"]
 
 [contracts.scoin-trait]
 path = "contracts/traits/scoin-trait.clar"
@@ -35,10 +36,11 @@ depends_on = ["sip-010-ft-trait"]
 
 [contracts.stoken]
 path = "contracts/stoken.clar"
-depends_on = ["stoken-trait"]
+depends_on = ["sip-010-ft-trait"]
 
 [contracts.stoken-registry]
 path = "contracts/stoken-registry.clar"
+depends_on = ["stoken-registry-trait","stoken","scoin-trait"]
 
 [contracts.token]
 path = "contracts/token.clar"
@@ -46,7 +48,7 @@ depends_on = []
 
 [contracts.controller-1]
 path = "contracts/controller-1.clar"
-depends_on = ["controller-trait", "stoken-trait", "sip-010-ft-trait"]
+depends_on = ["controller-trait", "stoken-trait", "sip-010-ft-trait","stoken-registry"]
 
 [repl]
 costs_version = 2

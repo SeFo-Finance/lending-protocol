@@ -1,0 +1,55 @@
+{
+  "name": "lending-protocol",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/True-Lucid-Finance/lending-protocol.git",
+  "author": "daiwanwei <wadejet.work@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "start": "tsdx watch",
+    "build": "tsdx build",
+    "test": "tsdx test",
+    "lint": "tsdx lint",
+    "prepare": "tsdx build",
+    "size": "size-limit",
+    "analyze": "size-limit --why"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "tsdx lint"
+    }
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "module": "dist/lending-protocol.esm.js",
+  "size-limit": [
+    {
+      "path": "dist/vault-phase-1.cjs.production.min.js",
+      "limit": "10 KB"
+    },
+    {
+      "path": "dist/vault-phase-1.esm.js",
+      "limit": "10 KB"
+    }
+  ],
+  "devDependencies": {
+    "@clarigen/cli": "^0.3.6",
+    "@clarigen/test": "^0.3.6",
+    "@size-limit/preset-small-lib": "^8.1.0",
+    "husky": "^8.0.1",
+    "size-limit": "^8.1.0",
+    "tsdx": "^0.14.1",
+    "tslib": "^2.4.0",
+    "typescript": "^4.8.3"
+  },
+  "dependencies": {
+    "@clarigen/core": "^0.3.4"
+  }
+}

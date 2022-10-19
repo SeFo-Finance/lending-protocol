@@ -1,5 +1,5 @@
-(use-trait controller-trait .controller-trait.controller-trait)
-(use-trait ir-trait .interest-rate-trait.ir-trait)
+;; (use-trait controller-trait .controller-trait.controller-trait)
+;; (use-trait ir-trait .interest-rate-trait.ir-trait)
 
 (define-trait stoken-trait 
     (

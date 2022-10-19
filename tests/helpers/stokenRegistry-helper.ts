@@ -46,7 +46,7 @@ export function depositAndMint(
     ):String{
     let block = chain.mineBlock([
         Tx.contractCall(
-            "stoken-registry","despoit-and-mint",
+            "stoken-registry","deposit-and-mint",
             [types.uint(depositAmount)],
             sender
         )
