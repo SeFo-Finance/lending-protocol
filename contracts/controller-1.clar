@@ -254,6 +254,8 @@
 ;; @param borrower The account which would borrow the asset
 ;; @param borrowAmount The amount of underlying the account would borrow
 ;; @return 0 if the borrow is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
+
+;; (try! (get-hypothetical-account-liquidity-internal redeemer (some stoken) redeem-tokens u0))
 (define-public (borrow-allowed
     (stoken principal)
     (borrower principal)
@@ -267,8 +269,26 @@
       (err ERR_MARKET_NOT_LISTED)
       (if (not (get-markets-account-membership stoken borrower))
         (err ERR_MARKET_NOT_ENTERED)
-        ;; FIXME
-        (ok ERR_NO_ERROR)
+        (let
+          (
+            (price (get-underlying-price none))
+          )
+          (if (is-eq price u0)
+            (err ERR_PRICE_ERROR)
+            (let
+              (
+                (liquidity-result (try! (get-hypothetical-account-liquidity-internal borrower (some stoken) u0 borrow-amount)))
+              )
+              (if (not (is-eq (get error liquidity-result) ERR_NO_ERROR))
+                (err (get error liquidity-result))
+                (if (> (get shortfall liquidity-result) u0)
+                  (err ERR_INSUFFICIENT_LIQUIDITY)
+                  (ok ERR_NO_ERROR)
+                )
+              )
+            )
+          )
+        )
       )
     )
   )

@@ -235,6 +235,28 @@ export const redeemAllowed = async (
   return block.receipts[0].result
 }
 
+export const borrowAllowed = async (
+  chain: Chain,
+  sender: string,
+  stoken: string,
+  borrower: string,
+  borrowAmount: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
+      'borrow-allowed',
+      [
+        types.principal(stoken),
+        types.principal(borrower),
+        types.uint(borrowAmount),
+      ],
+      sender,
+    )
+  ])
+  return block.receipts[0].result
+}
+
 // Getter functions
 export const getMarket = async (
   chain: Chain,

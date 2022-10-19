@@ -13,6 +13,7 @@ import {
   // Allowance functions
   mintAllowed,
   redeemAllowed,
+  borrowAllowed,
   // Getter functions
   getMarket,
   // Admin setter functions
@@ -148,6 +149,10 @@ Clarinet.test({
     /* redeem-allowed */
     const redeemAllowedResult = await redeemAllowed(chain, user1.address, stoken, user1.address, 87n * SCALAR)
     mintAllowedResult.expectOk().expectUint(0n)
+
+    /* borrow-allowed */
+    const borrowAllowedResult = await borrowAllowed(chain, user1.address, stoken, user1.address, 87n * SCALAR)
+    borrowAllowedResult.expectOk().expectUint(0n)
   },
 })
 
