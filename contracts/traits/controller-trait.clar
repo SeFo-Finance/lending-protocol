@@ -1,3 +1,4 @@
+;; (use-trait st-trait .stoken-trait.stoken-trait)
 
 (define-trait controller-trait
   (
@@ -5,7 +6,7 @@
 
     ;; Assets You Are In
     (enter-markets ((list 100 principal)) (response (list 100 uint) uint))
-    (exitMarket (principal) (response uint uint))
+    (exit-market (principal) (response uint uint))
 
     ;; Policy Hooks
     (mint-allowed (principal principal uint) (response uint uint))
@@ -30,6 +31,9 @@
     (transfer-verify (principal principal principal uint) (response bool uint))
 
     ;; Liquidity/Liquidation Calculations
-    (liquidate-calculate-seize-tokens (principal principal uint) (response (uint uint) uint))
+    ;; (liquidate-calculate-seize-tokens
+    ;;   (<st-trait> <st-trait> uint)
+    ;;   (response uint uint)
+    ;; )
   )
 )

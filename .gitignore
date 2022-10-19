@@ -3,6 +3,8 @@
 **/settings/Testnet.toml
 .requirements/
 history.txt
+.cache
+coverage.lcov
 
 .DS_Store
 node_modules

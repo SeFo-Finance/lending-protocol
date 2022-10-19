@@ -15,6 +15,21 @@
 (define-constant err-balance-not-enough (err u105))
 ;; data maps and vars
 ;;
+(define-data-var admin principal .controller-1)
+(define-data-var pending-admin principal .controller-1)
+(define-data-var controller principal .controller-1)
+(define-data-var interest-rate-model principal .controller-1)
+(define-data-var initial-exchange-rate-mantissa uint u1)
+(define-data-var reserve-factor-mantissa uint u1)
+(define-data-var accrual-block uint u1)
+(define-data-var borrow-index uint u0)
+(define-data-var total-borrows uint u0)
+(define-data-var total-reserves uint u0)
+(define-data-var total-supply uint u0)
+(define-map account-borrows principal {
+    balance: uint, interest-index: uint
+})
+
 
 ;; private functions
 ;;

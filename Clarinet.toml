@@ -2,42 +2,59 @@
 [project]
 name = "lending-protocol"
 authors = []
-telemetry = false
-cache_dir = "./.requirements"
+description = ""
+telemetry = true
+requirements = []
+boot_contracts = ["pox", "costs-v2", "bns"]
+
+[project.cache_location]
+path = ".requirements"
 
 [contracts.controller-trait]
 path = "contracts/traits/controller-trait.clar"
+depends_on = []
 
 [contracts.interest-rate-trait]
 path = "contracts/traits/interest-rate-trait.clar"
+depends_on = []
 
 [contracts.sip-010-ft-trait]
 path = "contracts/traits/sip-010-ft-trait.clar"
+depends_on = []
 
 [contracts.stoken-trait]
 path = "contracts/traits/stoken-trait.clar"
+depends_on = ["sip-010-ft-trait"]
 
 [contracts.stoken-registry-trait]
 path = "contracts/traits/stoken-registry-trait.clar"
 
 [contracts.scoin-trait]
 path = "contracts/traits/scoin-trait.clar"
+depends_on = ["sip-010-ft-trait"]
 
 [contracts.stoken]
 path = "contracts/stoken.clar"
+depends_on = ["stoken-trait"]
 
 [contracts.stoken-registry]
 path = "contracts/stoken-registry.clar"
 
 [contracts.token]
 path = "contracts/token.clar"
+depends_on = []
 
-[contracts.controller-g1]
-path = "contracts/controller-g1.clar"
+[contracts.controller-1]
+path = "contracts/controller-1.clar"
+depends_on = ["controller-trait", "stoken-trait", "sip-010-ft-trait"]
+
+[repl]
+costs_version = 2
+parser_version = 2
 
 [repl.analysis]
 passes = ["check_checker"]
-check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
+check_checker = { strict = false, trusted_sender = false, trusted_caller = false, callee_filter = false }
 
 # Check-checker settings:
 # trusted_sender: if true, inputs are trusted after tx_sender has been checked.

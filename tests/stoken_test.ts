@@ -1,6 +1,6 @@
-import { Clarinet, Tx, Chain, Account, types } from 'https://deno.land/x/clarinet@v1.0.2/index.ts';
-import { assertEquals } from 'https://deno.land/std@0.90.0/testing/asserts.ts';
-import {calculateExchangeRate, getAssetBalance,getTotalSupply} from "./helpers/helper.ts"
+import { Clarinet, Tx, Chain, Account, types } from 'https://deno.land/x/clarinet@v1.0.2/index.ts'
+import { assertEquals } from 'https://deno.land/std@0.90.0/testing/asserts.ts'
+import { calculateExchangeRate, getAssetBalance,getTotalSupply } from './helpers/helper.ts'
 import { 
     getCash,
     getExchangeRate,
@@ -11,16 +11,16 @@ import {
     addReserves,
     borrow,
     repayBorrow,
-} from "./helpers/stokenRegistry-helper.ts"
-import { INITIAL_EXCHANGE_RATE_MANTISSA, SCALAR } from './common.ts';
+} from './helpers/stokenRegistry-helper.ts'
+import { INITIAL_EXCHANGE_RATE_MANTISSA, SCALAR } from './common.ts'
 
 Clarinet.test({
     name: "testing first Deposit",
     async fn(chain: Chain, accounts: Map<string, Account>) {
-        const deployer=accounts.get("deployer");
-        if (!deployer) throw new Error("deployer not found");
-        const user1=accounts.get("wallet_1");
-        if (!user1) throw new Error("user1 not found");
+        const deployer=accounts.get("deployer")
+        if (!deployer) throw new Error("deployer not found")
+        const user1=accounts.get("wallet_1")
+        if (!user1) throw new Error("user1 not found")
         const depositStxAmount=1000000n
         const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
         const totalBorrows_ex=0n
@@ -32,9 +32,9 @@ Clarinet.test({
         let stokenAmount = depositAndMint(chain,user1.address,depositStxAmount)
         stokenAmount.expectUint(mintStokenAmount_ex)
         const stxForRegistry = getAssetBalance(chain,"STX",stokenRegistryAddress)
-        assertEquals(stxForRegistry, depositStxAmount);
+        assertEquals(stxForRegistry, depositStxAmount)
         const stokenForUser = getAssetBalance(chain,".stoken.stoken",user1.address)
-        assertEquals(stokenForUser, mintStokenAmount_ex);
+        assertEquals(stokenForUser, mintStokenAmount_ex)
         const totalBorrows=await getTotalBorrows(chain,user1.address)
         totalBorrows.expectUint(totalBorrows_ex)
         const totalReserves=await getTotalReserves(chain,user1.address)
@@ -46,15 +46,15 @@ Clarinet.test({
         const exchangeRate=await getExchangeRate(chain,user1.address)
         exchangeRate.expectUint(exchangeRate_ex)
     },
-});
+})
 
 Clarinet.test({
     name: "testing Deposit and Redeem",
     async fn(chain: Chain, accounts: Map<string, Account>) {
-        const deployer=accounts.get("deployer");
-        if (!deployer) throw new Error("deployer not found");
-        const user1=accounts.get("wallet_1");
-        if (!user1) throw new Error("user1 not found");
+        const deployer=accounts.get("deployer")
+        if (!deployer) throw new Error("deployer not found")
+        const user1=accounts.get("wallet_1")
+        if (!user1) throw new Error("user1 not found")
         const depositStxAmount=1000000n
         const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
         const totalBorrows_ex=0n
@@ -70,15 +70,15 @@ Clarinet.test({
         let withdrawAmount = redeem(chain,user1.address,mintStokenAmount_ex)
         withdrawAmount.expectUint(withdrawAmount_ex)
     },
-});
+})
 
 Clarinet.test({
     name: "testing add reserves",
     async fn(chain: Chain, accounts: Map<string, Account>) {
-        const deployer=accounts.get("deployer");
-        if (!deployer) throw new Error("deployer not found");
-        const user1=accounts.get("wallet_1");
-        if (!user1) throw new Error("user1 not found");
+        const deployer=accounts.get("deployer")
+        if (!deployer) throw new Error("deployer not found")
+        const user1=accounts.get("wallet_1")
+        if (!user1) throw new Error("user1 not found")
         const addReserveAmount=1000000n
         addReserves(chain,user1.address,addReserveAmount)
         const totalReserves=await getTotalReserves(chain,user1.address)
@@ -86,15 +86,15 @@ Clarinet.test({
         const exchangeRate=await getExchangeRate(chain,user1.address)
         exchangeRate.expectUint(INITIAL_EXCHANGE_RATE_MANTISSA)
     },
-});
+})
 
 Clarinet.test({
     name: "testing add Reserves and Deposit",
     async fn(chain: Chain, accounts: Map<string, Account>) {
-        const deployer=accounts.get("deployer");
-        if (!deployer) throw new Error("deployer not found");
-        const user1=accounts.get("wallet_1");
-        if (!user1) throw new Error("user1 not found");
+        const deployer=accounts.get("deployer")
+        if (!deployer) throw new Error("deployer not found")
+        const user1=accounts.get("wallet_1")
+        if (!user1) throw new Error("user1 not found")
         const addReserveAmount=1000000n
         addReserves(chain,user1.address,addReserveAmount)
         let totalReserves=await getTotalReserves(chain,user1.address)
@@ -119,15 +119,15 @@ Clarinet.test({
         const exchangeRate_2=await getExchangeRate(chain,user1.address)
         exchangeRate_2.expectUint(exchangeRate_ex_2)
     },
-});
+})
 
 Clarinet.test({
     name: "testing Borrow",
     async fn(chain: Chain, accounts: Map<string, Account>) {
-        const deployer=accounts.get("deployer");
-        if (!deployer) throw new Error("deployer not found");
-        const user1=accounts.get("wallet_1");
-        if (!user1) throw new Error("user1 not found");
+        const deployer=accounts.get("deployer")
+        if (!deployer) throw new Error("deployer not found")
+        const user1=accounts.get("wallet_1")
+        if (!user1) throw new Error("user1 not found")
         const addReserveAmount=1000000n
         addReserves(chain,user1.address,addReserveAmount)
         let totalReserves=await getTotalReserves(chain,user1.address)
@@ -150,15 +150,15 @@ Clarinet.test({
         const exchangeRate=await getExchangeRate(chain,user1.address)
         exchangeRate.expectUint(exchangeRate_ex)
     },
-});
+})
 
 Clarinet.test({
     name: "testing Borrow",
     async fn(chain: Chain, accounts: Map<string, Account>) {
-        const deployer=accounts.get("deployer");
-        if (!deployer) throw new Error("deployer not found");
-        const user1=accounts.get("wallet_1");
-        if (!user1) throw new Error("user1 not found");
+        const deployer=accounts.get("deployer")
+        if (!deployer) throw new Error("deployer not found")
+        const user1=accounts.get("wallet_1")
+        if (!user1) throw new Error("user1 not found")
         const addReserveAmount=1000000n
         addReserves(chain,user1.address,addReserveAmount)
         let totalReserves=await getTotalReserves(chain,user1.address)
@@ -176,6 +176,6 @@ Clarinet.test({
         let repayBorrowRes = repayBorrow(chain,user1.address,borrowAmount)
         repayBorrowRes.expectUint(borrowAmount)
     },
-});
+})
 
 
