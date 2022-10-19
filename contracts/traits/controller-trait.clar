@@ -33,7 +33,7 @@
     ;; Liquidity/Liquidation Calculations
     ;; (liquidate-calculate-seize-tokens
     ;;   (<st-trait> <st-trait> uint)
-    ;;   (response {error: uint, seize-tokens: uint} uint)
+    ;;   (response uint uint)
     ;; )
   )
 )

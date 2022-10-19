@@ -29,8 +29,6 @@
 (define-map markets principal {
   is-listed: bool,
   collateral-factor-mantissa: uint,
-  ;; FIXME: Per-market mapping of "accounts in this asset"
-  ;; mapping(address => bool) accountMembership;
 })
 (define-map markets-account-membership
   { stoken: principal, account: principal }
@@ -217,12 +215,9 @@
           (
             (liquidity-result (try! (get-hypothetical-account-liquidity-internal redeemer (some stoken) redeem-tokens u0)))
           )
-          (if (not (is-eq (get error liquidity-result) ERR_NO_ERROR))
-            (err (get error liquidity-result))
-            (if (> (get shortfall liquidity-result) u0)
-              (err ERR_INSUFFICIENT_LIQUIDITY)
-              (ok ERR_NO_ERROR)
-            )
+          (if (> (get shortfall liquidity-result) u0)
+            (err ERR_INSUFFICIENT_LIQUIDITY)
+            (ok ERR_NO_ERROR)
           )
         )
       )
@@ -277,12 +272,9 @@
               (
                 (liquidity-result (try! (get-hypothetical-account-liquidity-internal borrower (some stoken) u0 borrow-amount)))
               )
-              (if (not (is-eq (get error liquidity-result) ERR_NO_ERROR))
-                (err (get error liquidity-result))
-                (if (> (get shortfall liquidity-result) u0)
-                  (err ERR_INSUFFICIENT_LIQUIDITY)
-                  (ok ERR_NO_ERROR)
-                )
+              (if (> (get shortfall liquidity-result) u0)
+                (err ERR_INSUFFICIENT_LIQUIDITY)
+                (ok ERR_NO_ERROR)
               )
             )
           )
@@ -372,19 +364,16 @@
         (
           (liquidity-result (try! (get-account-liquidity-internal borrower)))
         )
-        (if (not (is-eq (get error liquidity-result) ERR_NO_ERROR))
-          (err (get error liquidity-result))
-          (if (> (get shortfall liquidity-result) u0)
-            (err ERR_INSUFFICIENT_LIQUIDITY)
-            (let
-              (
-                (borrow-balance (unwrap! (contract-call? .stoken-registry get-borrow-balance-stored borrower) ERR_UNKNOWN))
-                (max-close (mul-scalar-truncate (var-get close-factor-mantissa) borrow-balance))
-              )
-              (if (> repay-amount max-close)
-                (err ERR_TOO_MUCH_REPAY)
-                (ok ERR_NO_ERROR)
-              )
+        (if (> (get shortfall liquidity-result) u0)
+          (err ERR_INSUFFICIENT_LIQUIDITY)
+          (let
+            (
+              (borrow-balance (unwrap! (contract-call? .stoken-registry get-borrow-balance-stored borrower) ERR_UNKNOWN))
+              (max-close (mul-scalar-truncate (var-get close-factor-mantissa) borrow-balance))
+            )
+            (if (> repay-amount max-close)
+              (err ERR_TOO_MUCH_REPAY)
+              (ok ERR_NO_ERROR)
             )
           )
         )
@@ -533,7 +522,7 @@
     )
     ;; FIXME: check control flow correctness
     (if (is-eq oracle-price-mantissa u0)
-      (ok { error: ERR_PRICE_ERROR, liquidity: u0, shortfall: u0 })
+      (err ERR_PRICE_ERROR)
       (let
         (
           (market (unwrap-panic (get-market .stoken)))
@@ -551,13 +540,13 @@
               (sum-borrow-plus-effects-2 (mul-scalar-truncate-add-uint oracle-price-mantissa (get borrow-balance account-snapshot-result) sum-borrow-plus-effects-1))
             )
             (if (> sum-collateral sum-borrow-plus-effects-2)
-              (ok { error: ERR_NO_ERROR, liquidity: (- sum-collateral sum-borrow-plus-effects-2), shortfall: u0 })
-              (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- sum-borrow-plus-effects-2 sum-collateral) })
+              (ok { liquidity: (- sum-collateral sum-borrow-plus-effects-2), shortfall: u0 })
+              (ok { liquidity: u0, shortfall: (- sum-borrow-plus-effects-2 sum-collateral) })
             )
           )
           (if (> sum-collateral sum-borrow-plus-effects)
-            (ok { error: ERR_NO_ERROR, liquidity: (- sum-collateral sum-borrow-plus-effects), shortfall: u0 })
-            (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- sum-borrow-plus-effects sum-collateral) })
+            (ok { liquidity: (- sum-collateral sum-borrow-plus-effects), shortfall: u0 })
+            (ok { liquidity: u0, shortfall: (- sum-borrow-plus-effects sum-collateral) })
           )
         )
       )
@@ -582,7 +571,7 @@
       (price-collateral-mantissa (get-underlying-price (some stoken-collateral)))
     )
     (if (or (is-eq price-borrowed-mantissa u0) (is-eq price-collateral-mantissa u0))
-      (ok { error: ERR_PRICE_ERROR, seize-tokens: u0 })
+      (err ERR_PRICE_ERROR)
       (let
         (
           (exchange-rate-mantissa (unwrap! (contract-call? stoken-collateral exchange-rate-current) ERR_UNKNOWN))
@@ -591,7 +580,7 @@
           (ratio (div-exp numerator denominator))
           (seize-tokens (mul-scalar-truncate ratio actual-repay-amount))
         )
-        (ok { error: ERR_NO_ERROR, seize-tokens: seize-tokens })
+        (ok seize-tokens)
       )
     )
   )
