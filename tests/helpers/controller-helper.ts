@@ -281,6 +281,82 @@ export const repayBorrowAllowed = async (
   return block.receipts[0].result
 }
 
+export const liquidateBorrowAllowed = async (
+  chain: Chain,
+  sender: string,
+  stokenBorrowed: string,
+  stokenCollateral: string,
+  liquidator: string,
+  borrower: string,
+  repayAmount: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
+      'liquidate-borrow-allowed',
+      [
+        types.principal(stokenBorrowed),
+        types.principal(stokenCollateral),
+        types.principal(liquidator),
+        types.principal(borrower),
+        types.uint(repayAmount),
+      ],
+      sender,
+    )
+  ])
+  return block.receipts[0].result
+}
+
+export const seizeAllowed = async (
+  chain: Chain,
+  sender: string,
+  stokenCollateral: string,
+  stokenBorrowed: string,
+  liquidator: string,
+  borrower: string,
+  seizeTokens: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
+      'seize-allowed',
+      [
+        types.principal(stokenCollateral),
+        types.principal(stokenBorrowed),
+        types.principal(liquidator),
+        types.principal(borrower),
+        types.uint(seizeTokens),
+      ],
+      sender,
+    )
+  ])
+  return block.receipts[0].result
+}
+
+export const transferAllowed = async (
+  chain: Chain,
+  sender: string,
+  stoken: string,
+  src: string,
+  dst: string,
+  transferTokens: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
+      'transfer-allowed',
+      [
+        types.principal(stoken),
+        types.principal(src),
+        types.principal(dst),
+        types.uint(transferTokens),
+      ],
+      sender,
+    )
+  ])
+  return block.receipts[0].result
+}
+
 // Getter functions
 export const getMarket = async (
   chain: Chain,

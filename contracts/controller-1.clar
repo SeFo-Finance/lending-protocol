@@ -254,8 +254,6 @@
 ;; @param borrower The account which would borrow the asset
 ;; @param borrowAmount The amount of underlying the account would borrow
 ;; @return 0 if the borrow is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
-
-;; (try! (get-hypothetical-account-liquidity-internal redeemer (some stoken) redeem-tokens u0))
 (define-public (borrow-allowed
     (stoken principal)
     (borrower principal)
@@ -370,9 +368,26 @@
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
       (err ERR_MARKET_NOT_LISTED)
-      (begin
-        ;; FIXME
-        (ok ERR_NO_ERROR)
+      (let
+        (
+          (liquidity-result (try! (get-account-liquidity-internal borrower)))
+        )
+        (if (not (is-eq (get error liquidity-result) ERR_NO_ERROR))
+          (err (get error liquidity-result))
+          (if (> (get shortfall liquidity-result) u0)
+            (err ERR_INSUFFICIENT_LIQUIDITY)
+            (let
+              (
+                (borrow-balance (unwrap! (contract-call? .stoken-registry get-borrow-balance-stored borrower) ERR_UNKNOWN))
+                (max-close (mul-scalar-truncate (var-get close-factor-mantissa) borrow-balance))
+              )
+              (if (> repay-amount max-close)
+                (err ERR_TOO_MUCH_REPAY)
+                (ok ERR_NO_ERROR)
+              )
+            )
+          )
+        )
       )
     )
   )
@@ -418,6 +433,7 @@
     )
     (if (or (not (get is-listed market-borrowed)) (not (get is-listed market-collateral)))
       (err ERR_MARKET_NOT_LISTED)
+      ;; FIXME
       (if false
         (err ERR_CONTROLLER_MISMATCH)
         (ok ERR_NO_ERROR)
@@ -457,10 +473,7 @@
     (dst principal)
     (transfer-tokens uint)
   )
-  (begin
-    ;; FIXME
-    (ok ERR_NO_ERROR)
-  )
+  (redeem-allowed-internal stoken src transfer-tokens)
 )
 
 ;; @notice Validates transfer and reverts on rejection. May emit logs.
@@ -520,35 +533,35 @@
     )
     ;; FIXME: check control flow correctness
     (if (is-eq oracle-price-mantissa u0)
-        (ok { error: ERR_PRICE_ERROR, liquidity: u0, shortfall: u0 })
-        (let
-          (
-            (market (unwrap-panic (get-market .stoken)))
-            (token-to-ether (mul-exp3 (get collateral-factor-mantissa market) (get exchange-rate account-snapshot-result) oracle-price-mantissa))
+      (ok { error: ERR_PRICE_ERROR, liquidity: u0, shortfall: u0 })
+      (let
+        (
+          (market (unwrap-panic (get-market .stoken)))
+          (token-to-ether (mul-exp3 (get collateral-factor-mantissa market) (get exchange-rate account-snapshot-result) oracle-price-mantissa))
 
-            ;; FIXME?: sum-collateral, sum-borrow-plus-effects
-            (sum-collateral (mul-scalar-truncate-add-uint token-to-ether (get stoken-balance account-snapshot-result) u0))
-            (sum-borrow-plus-effects (mul-scalar-truncate-add-uint oracle-price-mantissa (get borrow-balance account-snapshot-result) u0))
+          ;; FIXME?: sum-collateral, sum-borrow-plus-effects
+          (sum-collateral (mul-scalar-truncate-add-uint token-to-ether (get stoken-balance account-snapshot-result) u0))
+          (sum-borrow-plus-effects (mul-scalar-truncate-add-uint oracle-price-mantissa (get borrow-balance account-snapshot-result) u0))
+        )
+        (if (is-eq (some .stoken) stoken-modify)
+          (let
+            (
+              ;; FIXME?: sum-borrow-plus-effects
+              (sum-borrow-plus-effects-1 (mul-scalar-truncate-add-uint token-to-ether redeem-tokens sum-borrow-plus-effects))
+              (sum-borrow-plus-effects-2 (mul-scalar-truncate-add-uint oracle-price-mantissa (get borrow-balance account-snapshot-result) sum-borrow-plus-effects-1))
+            )
+            (if (> sum-collateral sum-borrow-plus-effects-2)
+              (ok { error: ERR_NO_ERROR, liquidity: (- sum-collateral sum-borrow-plus-effects-2), shortfall: u0 })
+              (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- sum-borrow-plus-effects-2 sum-collateral) })
+            )
           )
-          (if (is-eq .stoken (unwrap-panic stoken-modify))
-            (let
-              (
-                ;; FIXME?: sum-borrow-plus-effects
-                (sum-borrow-plus-effects-1 (mul-scalar-truncate-add-uint token-to-ether redeem-tokens sum-borrow-plus-effects))
-                (sum-borrow-plus-effects-2 (mul-scalar-truncate-add-uint oracle-price-mantissa (get borrow-balance account-snapshot-result) sum-borrow-plus-effects-1))
-              )
-              (if (> sum-collateral sum-borrow-plus-effects-2)
-                (ok { error: ERR_NO_ERROR, liquidity: (- sum-collateral sum-borrow-plus-effects-2), shortfall: u0 })
-                (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- sum-borrow-plus-effects-2 sum-collateral) })
-              )
-            )
-            (if (> sum-collateral sum-borrow-plus-effects)
-              (ok { error: ERR_NO_ERROR, liquidity: (- sum-collateral sum-borrow-plus-effects), shortfall: u0 })
-              (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- sum-borrow-plus-effects sum-collateral) })
-            )
+          (if (> sum-collateral sum-borrow-plus-effects)
+            (ok { error: ERR_NO_ERROR, liquidity: (- sum-collateral sum-borrow-plus-effects), shortfall: u0 })
+            (ok { error: ERR_NO_ERROR, liquidity: u0, shortfall: (- sum-borrow-plus-effects sum-collateral) })
           )
         )
       )
+    )
   )
 )
 

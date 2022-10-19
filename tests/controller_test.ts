@@ -15,6 +15,9 @@ import {
   redeemAllowed,
   borrowAllowed,
   repayBorrowAllowed,
+  liquidateBorrowAllowed,
+  seizeAllowed,
+  transferAllowed,
   // Getter functions
   getMarket,
   // Admin setter functions
@@ -158,6 +161,18 @@ Clarinet.test({
     /* repay-borrow-allowed */
     const repayBorrowAllowedResult = await repayBorrowAllowed(chain, user1.address, stoken, user1.address, user2.address, 87n * SCALAR)
     repayBorrowAllowedResult.expectOk().expectUint(0n)
+
+    /* liquidate-borrow-allowed */
+    const liquidateBorrowAllowedResult = await liquidateBorrowAllowed(chain, user1.address, stoken, stoken, user2.address, user1.address, 87n * SCALAR)
+    // liquidateBorrowAllowedResult.expectOk().expectUint(0n)
+
+    /* seize-allowed */
+    const seizeAllowedResult = await seizeAllowed(chain, user1.address, stoken, stoken, user2.address, user1.address, 87n * SCALAR)
+    seizeAllowedResult.expectOk().expectUint(0n)
+
+    /* transfer-allowed */
+    const transferAllowedResult = await transferAllowed(chain, user1.address, stoken, user1.address, user2.address, 87n * SCALAR)
+    transferAllowedResult.expectOk().expectUint(0n)
   },
 })
 
