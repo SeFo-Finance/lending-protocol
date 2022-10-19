@@ -213,6 +213,28 @@ export const mintAllowed = async (
   return block.receipts[0].result
 }
 
+export const redeemAllowed = async (
+  chain: Chain,
+  sender: string,
+  stoken: string,
+  redeemer: string,
+  redeemTokens: bigint,
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(
+      CONTROLLER_CONTRACT,
+      'redeem-allowed',
+      [
+        types.principal(stoken),
+        types.principal(redeemer),
+        types.uint(redeemTokens),
+      ],
+      sender,
+    )
+  ])
+  return block.receipts[0].result
+}
+
 // Getter functions
 export const getMarket = async (
   chain: Chain,
@@ -288,6 +310,18 @@ export const supportMarket = async (
 }
 
 // Utility functions
+export const enterMarkets = async (
+  chain: Chain,
+  sender: string,
+  stokens: principal[],
+): Promise<String> => {
+  const block = chain.mineBlock([
+    Tx.contractCall(CONTROLLER_CONTRACT, 'enter-markets', [types.list(stokens.map((val) => types.principal(val)))], sender)
+  ])
+  return block.receipts[0].result.expectOk()
+}
+
+// SafeMath functions
 export const getExp = async (
   chain: Chain,
   sender: string,

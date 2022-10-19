@@ -22,7 +22,8 @@
 ;; FIXME (default value): Max number of assets a single account can participate in (borrow or use as collateral)
 (define-data-var max-assets uint u0)
 ;; Per-account mapping of "assets you are in", capped by max-assets
-(define-map account-assets principal (list 100 principal))
+;; (define-map account-assets principal (list 100 principal))
+(define-map account-assets principal bool)
 
 ;; ComptrollerG1 variables
 (define-map markets principal {
@@ -128,11 +129,13 @@
       ERR_MARKET_NOT_LISTED
       (if (get-markets-account-membership stoken tx-sender)
         ERR_NO_ERROR
-        (if (>= (len (unwrap-panic (map-get? account-assets tx-sender))) (var-get max-assets))
-          ERR_TOO_MANY_ASSETS
+        (if (default-to false (map-get? account-assets tx-sender))
+          ;; ERR_TOO_MANY_ASSETS
+          ERR_NO_ERROR
           (begin
             (map-set markets-account-membership { stoken: stoken, account: tx-sender } true)
             ;; FIXME: accountAssets[msg.sender].push(cToken);
+            (map-set account-assets tx-sender true)
             ERR_NO_ERROR
           )
         )
@@ -716,7 +719,7 @@
 )
 
 (define-private (get-markets-account-membership (stoken principal) (account principal))
-  (unwrap-panic (map-get? markets-account-membership { stoken: stoken, account: account }))
+  (default-to false (map-get? markets-account-membership { stoken: stoken, account: account }))
 )
 
 ;; SafeMath functions
