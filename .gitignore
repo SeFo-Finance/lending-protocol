@@ -2,6 +2,7 @@
 **/settings/Mainnet.toml
 **/settings/Testnet.toml
 .requirements/
+dist/
 history.txt
 .cache
 coverage.lcov
