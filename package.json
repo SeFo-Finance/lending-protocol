@@ -9,6 +9,7 @@
     "node": ">=10"
   },
   "scripts": {
+    "generate:type": "clarigen",
     "start": "tsdx watch",
     "build": "tsdx build",
     "test": "tsdx test",

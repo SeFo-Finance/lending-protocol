@@ -9,3 +9,5 @@ coverage.lcov
 
 .DS_Store
 node_modules
+src
+.idea
