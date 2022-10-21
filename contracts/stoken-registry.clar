@@ -24,6 +24,7 @@
 (define-constant err-set-total-reserves (err u112))
 (define-constant err-invalid-borrow-index (err u113))
 (define-constant err-get-stoken-supply (err u114))
+(define-constant err-set-account-supply (err u115))
 ;; data maps and vars
 ;;
 (define-data-var admin principal .controller-g1)
@@ -38,6 +39,7 @@
 (define-map account-borrows principal {
     balance: uint, interest-index: uint
 })
+(define-map account-supply principal uint)
 
 
 ;; private functions
@@ -206,7 +208,8 @@
             (block-now block-height)
             (exchange-rate (try! (get-exchange-rate-stored)))
             (coin-balance (stx-get-balance minter))
-            (mint-stoken-amount (/ (* amount scalar) exchange-rate))) 
+            (mint-stoken-amount (/ (* amount scalar) exchange-rate))
+            (supply-amount (default-to u0 (map-get? account-supply minter)))) 
             (begin 
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
@@ -217,6 +220,9 @@
                 (asserts! (try! 
                     (contract-call? .stoken mint-for-registry amount minter)) 
                     err-stoken-mint)
+                (asserts! 
+                    (map-set account-supply minter (+ supply-amount amount)) 
+                    err-set-account-supply)
                 (ok {
                     stoken-amount: mint-stoken-amount,
                     stx-amount: amount
@@ -234,17 +240,22 @@
             (exchange-rate (try! (get-exchange-rate-stored)))
             (stx-amount (unwrap! 
                 (div-scalar-by-exp-truncate (* amount exchange-rate))
-                err-div-scalar)))
+                err-div-scalar))
+            (supply-amount (default-to u0 (map-get? account-supply redeemer))))
             (begin 
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= stx-amount u0) err-invalid-amount)
+                (asserts! (>= supply-amount stx-amount) err-invalid-amount)
                 (asserts! (try! 
                     (as-contract (stx-transfer? amount sender redeemer)))
                     err-transfer-stx-fail))
                 (asserts! (try! 
                     (contract-call? .stoken burn-for-registry amount redeemer)) 
                     err-stoken-burn)
+                (asserts! 
+                    (map-set account-supply redeemer (- supply-amount stx-amount)) 
+                    err-set-account-supply)
                 (ok {
                     stoken-amount: amount,
                     stx-amount: stx-amount
