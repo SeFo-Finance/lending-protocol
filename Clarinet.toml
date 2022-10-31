@@ -54,6 +54,19 @@ depends_on = ["controller-trait", "stoken-trait", "sip-010-ft-trait","stoken-reg
 path = "contracts/interest-rate.clar"
 depends_on = ["interest-rate-trait"]
 
+[contracts.xbtc]
+path = "contracts/xbtc.clar"
+depends_on = ["sip-010-ft-trait"]
+
+[contracts.sxbtc]
+path = "contracts/sxbtc.clar"
+depends_on = ["sip-010-ft-trait"]
+
+[contracts.sxbtc-registry]
+path = "contracts/sxbtc-registry.clar"
+depends_on = ["stoken-registry-trait","sxbtc","scoin-trait","xbtc"]
+
+
 [repl]
 costs_version = 2
 parser_version = 2
