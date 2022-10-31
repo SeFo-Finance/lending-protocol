@@ -25,6 +25,7 @@
 (define-constant err-invalid-borrow-index (err u113))
 (define-constant err-get-stoken-supply (err u114))
 (define-constant err-set-account-supply (err u115))
+(define-constant err-invalid-redeem-amount (err u116))
 ;; data maps and vars
 ;;
 (define-data-var admin principal .controller-1)
@@ -235,7 +236,7 @@
                     (stx-transfer? amount minter coin-recipient)) 
                     err-transfer-stx-fail)
                 (asserts! (try! 
-                    (contract-call? .stoken mint-for-registry amount minter)) 
+                    (contract-call? .stoken mint-for-registry mint-stoken-amount minter)) 
                     err-stoken-mint)
                 (asserts! 
                     (map-set account-supply minter (+ supply-amount amount)) 
@@ -263,9 +264,9 @@
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= stx-amount u0) err-invalid-amount)
-                (asserts! (>= supply-amount stx-amount) err-invalid-amount)
+                (asserts! (>= supply-amount stx-amount) err-invalid-redeem-amount)
                 (asserts! (try! 
-                    (as-contract (stx-transfer? amount sender redeemer)))
+                    (as-contract (stx-transfer? stx-amount sender redeemer)))
                     err-transfer-stx-fail))
                 (asserts! (try! 
                     (contract-call? .stoken burn-for-registry amount redeemer)) 

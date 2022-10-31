@@ -25,6 +25,7 @@
 (define-constant err-invalid-borrow-index (err u113))
 (define-constant err-get-sxbtc-supply (err u114))
 (define-constant err-set-account-supply (err u115))
+(define-constant err-invalid-redeem-amount (err u116))
 ;; data maps and vars
 ;;
 (define-data-var admin principal .controller-1)
@@ -239,7 +240,7 @@
                     (contract-call? .xbtc transfer amount minter coin-recipient none)) 
                     err-transfer-xbtc-fail)
                 (asserts! (try! 
-                    (contract-call? .sxbtc mint-for-registry amount minter)) 
+                    (contract-call? .sxbtc mint-for-registry mint-sxbtc-amount minter)) 
                     err-sxbtc-mint)
                 (asserts! 
                     (map-set account-supply minter (+ supply-amount amount)) 
@@ -267,12 +268,12 @@
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= xbtc-amount u0) err-invalid-amount)
-                (asserts! (>= supply-amount xbtc-amount) err-invalid-amount)
+                (asserts! (>= supply-amount xbtc-amount) err-invalid-redeem-amount)
                 (asserts! (try! 
                     (as-contract (contract-call? .xbtc transfer amount sender redeemer none)))
                     err-transfer-xbtc-fail))
                 (asserts! (try! 
-                    (contract-call? .sxbtc burn-for-registry amount redeemer)) 
+                    (contract-call? .sxbtc burn-for-registry xbtc-amount redeemer)) 
                     err-sxbtc-burn)
                 (asserts! 
                     (map-set account-supply redeemer (- supply-amount xbtc-amount)) 
