@@ -2,58 +2,56 @@ import { Clarinet, Tx, Chain, Account, types } from 'https://deno.land/x/clarine
 import { SCALAR } from '../common.ts';
 import { assertEquals } from 'https://deno.land/std@0.90.0/testing/asserts.ts';
 
-const STOKEN_REGISTRY="stoken-registry"
-
 
 export async function getTotalBorrows(
-    chain:Chain,sender:string
+    chain:Chain,contract:string,sender:string
     ):Promise<String>{
     const res=await chain.callReadOnlyFn(
-        STOKEN_REGISTRY,"get-total-borrows",[],sender  
+        contract,"get-total-borrows",[],sender  
     )
     return res.result.expectOk()
 }
 
 export async function getTotalReserves(
-    chain:Chain,sender:string
+    chain:Chain,contract:string,sender:string
     ):Promise<String>{
     const res=await chain.callReadOnlyFn(
-        STOKEN_REGISTRY,"get-total-reserves",[],sender  
+        contract,"get-total-reserves",[],sender  
     )
     return res.result.expectOk()
 }
 
 export async function getCash(
-    chain:Chain,sender:string
+    chain:Chain,contract:string,sender:string
     ):Promise<String>{
     const res=await chain.callReadOnlyFn(
-        STOKEN_REGISTRY,"get-cash",[],sender  
+        contract,"get-cash",[],sender  
     )
     return res.result.expectOk()
 }
 
 export async function getExchangeRate(
-    chain:Chain,sender:string
+    chain:Chain,contract:string,sender:string
     ):Promise<String>{
     const res=await chain.callReadOnlyFn(
-        STOKEN_REGISTRY,"get-exchange-rate-stored",[],sender  
+        contract,"get-exchange-rate-stored",[],sender  
     )
     return res.result.expectOk()
 }
 
 export function depositAndMint(
-    chain:Chain,sender:string,depositAmount:bigint
+    chain:Chain,contract:string,sender:string,depositAmount:bigint
     ):String{
     let block = chain.mineBlock([
         Tx.contractCall(
-            "stoken-registry","deposit-and-mint",
+            contract,"deposit-and-mint",
             [types.uint(depositAmount)],
             sender
         )
     ]);
     const resTuple=block.receipts[0].result.expectOk().expectTuple()
     assertEquals(
-        resTuple["stx-amount"],
+        resTuple["token-amount"],
         types.uint(depositAmount),
         );
     if (!resTuple["stoken-amount"]) throw new Error(`stoken-amount not found`)
@@ -61,11 +59,11 @@ export function depositAndMint(
 }
 
 export function redeem(
-    chain:Chain,sender:string,withdrawAmount:bigint
+    chain:Chain,contract:string,sender:string,withdrawAmount:bigint
     ):String{
     let block = chain.mineBlock([
         Tx.contractCall(
-            "stoken-registry","redeem",
+            contract,"redeem",
             [types.uint(withdrawAmount)],
             sender
         )
@@ -75,16 +73,16 @@ export function redeem(
         resTuple["stoken-amount"],
         types.uint(withdrawAmount),
         );
-    if (!resTuple["stx-amount"]) throw new Error(`stx-amount not found`)
-    return resTuple["stx-amount"]
+    if (!resTuple["token-amount"]) throw new Error(`stx-amount not found`)
+    return resTuple["token-amount"]
 }
 
 export function addReserves(
-    chain:Chain,sender:string,amount:bigint
+    chain:Chain,contract:string,sender:string,amount:bigint
     ){
     let block = chain.mineBlock([
         Tx.contractCall(
-            "stoken-registry","add-reserves",
+            contract,"add-reserves",
             [types.uint(amount)],
             sender
         )
@@ -93,11 +91,11 @@ export function addReserves(
 }
 
 export function borrow(
-    chain:Chain,sender:string,amount:bigint
+    chain:Chain,contract:string,sender:string,amount:bigint
     ):String{
     let block = chain.mineBlock([
         Tx.contractCall(
-            "stoken-registry","borrow",
+            contract,"borrow",
             [types.uint(amount)],
             sender
         )
@@ -106,11 +104,11 @@ export function borrow(
 }
 
 export function repayBorrow(
-    chain:Chain,sender:string,amount:bigint
+    chain:Chain,contract:string,sender:string,amount:bigint
     ):String{
     let block = chain.mineBlock([
         Tx.contractCall(
-            "stoken-registry","repay-borrow",
+            contract,"repay-borrow",
             [types.uint(amount)],
             sender
         )
