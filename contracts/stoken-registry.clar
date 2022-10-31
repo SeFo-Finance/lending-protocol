@@ -57,6 +57,23 @@
 ;; public functions
 ;;
 
+(define-read-only (get-user-supply (user principal))
+    (let (
+        (supply (default-to 
+            u0 
+            (map-get? account-supply user)))) 
+        (ok supply)))
+
+(define-read-only (get-user-borrow (user principal))
+    (let (
+        (borrow-info (default-to 
+            {
+                balance: u0,
+                interest-index: u0,
+            } 
+            (map-get? account-borrows user)))) 
+        (ok borrow-info)))
+
 (define-read-only (get-total-borrows) 
     (ok (var-get total-borrows)))
 
