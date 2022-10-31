@@ -60,7 +60,7 @@ depends_on = ["sip-010-ft-trait"]
 
 [contracts.sxbtc-registry]
 path = "contracts/sxbtc-registry.clar"
-depends_on = ["stoken-registry-trait","sxbtc","scoin-trait"]
+depends_on = ["stoken-registry-trait","sxbtc","scoin-trait","xbtc"]
 
 
 [repl]
