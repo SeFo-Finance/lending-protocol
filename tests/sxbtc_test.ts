@@ -1,8 +1,8 @@
 import { Clarinet, Tx, Chain, Account, types } from 'https://deno.land/x/clarinet@v1.0.2/index.ts'
 import { assertEquals } from 'https://deno.land/std@0.90.0/testing/asserts.ts'
 import { calculateExchangeRate, getAssetBalance } from './helpers/helper.ts'
-import {getTotalSupply} from "./helpers/ft-helper.ts"
-import {
+import {getTotalSupply, mint} from "./helpers/ft-helper.ts"
+import { 
     getCash,
     getExchangeRate,
     getTotalBorrows,
@@ -15,7 +15,7 @@ import {
 } from './helpers/registry-helper.ts'
 import { INITIAL_EXCHANGE_RATE_MANTISSA, SCALAR } from './common.ts'
 
-const REGISTRY="stoken-registry"
+const REGISTRY="sxbtc-registry"
 
 Clarinet.test({
     name: "testing first Deposit",
@@ -24,28 +24,29 @@ Clarinet.test({
         if (!deployer) throw new Error("deployer not found")
         const user1=accounts.get("wallet_1")
         if (!user1) throw new Error("user1 not found")
-        const depositStxAmount=1000000n
-        const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
+        const depositXbtcAmount=1000000n
+        mint(chain,"xbtc",user1.address,depositXbtcAmount)
+        const mintSxbtcAmount_ex=depositXbtcAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
         const totalBorrows_ex=0n
         const totalReserves_ex=0n
         const exchangeRate_ex=calculateExchangeRate(
-            depositStxAmount,totalBorrows_ex,totalReserves_ex,mintStokenAmount_ex
+            depositXbtcAmount,totalBorrows_ex,totalReserves_ex,mintSxbtcAmount_ex
             )
-        const stokenRegistryAddress=`${deployer.address}.stoken-registry`
-        let stokenAmount = depositAndMint(chain,REGISTRY,user1.address,depositStxAmount)
-        stokenAmount.expectUint(mintStokenAmount_ex)
-        const stxForRegistry = getAssetBalance(chain,"STX",stokenRegistryAddress)
-        assertEquals(stxForRegistry, depositStxAmount)
-        const stokenForUser = getAssetBalance(chain,".stoken.stoken",user1.address)
-        assertEquals(stokenForUser, mintStokenAmount_ex)
+        const sxbtcRegistryAddress=`${deployer.address}.sxbtc-registry`
+        let sxbtcAmount = depositAndMint(chain,REGISTRY,user1.address,depositXbtcAmount)
+        sxbtcAmount.expectUint(mintSxbtcAmount_ex)
+        const xbtcForRegistry = getAssetBalance(chain,".xbtc.xbtc",sxbtcRegistryAddress)
+        assertEquals(xbtcForRegistry, depositXbtcAmount)
+        const sxbtcForUser = getAssetBalance(chain,".sxbtc.sxbtc",user1.address)
+        assertEquals(sxbtcForUser, mintSxbtcAmount_ex)
         const totalBorrows=await getTotalBorrows(chain,REGISTRY,user1.address)
         totalBorrows.expectUint(totalBorrows_ex)
         const totalReserves=await getTotalReserves(chain,REGISTRY,user1.address)
         totalReserves.expectUint(totalReserves_ex)
         const cash=await getCash(chain,REGISTRY,user1.address)
-        cash.expectUint(depositStxAmount)
-        const supply=await getTotalSupply(chain,"stoken",user1.address)
-        supply.expectUint(mintStokenAmount_ex)
+        cash.expectUint(depositXbtcAmount)
+        const supply=await getTotalSupply(chain,"sxbtc",user1.address)
+        supply.expectUint(mintSxbtcAmount_ex)
         const exchangeRate=await getExchangeRate(chain,REGISTRY,user1.address)
         exchangeRate.expectUint(exchangeRate_ex)
     },
@@ -58,19 +59,20 @@ Clarinet.test({
         if (!deployer) throw new Error("deployer not found")
         const user1=accounts.get("wallet_1")
         if (!user1) throw new Error("user1 not found")
-        const depositStxAmount=1000000n
-        const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
+        const depositXbtcAmount=1000000n
+        mint(chain,"xbtc",user1.address,depositXbtcAmount)
+        const mintSxbtcAmount_ex=depositXbtcAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
         const totalBorrows_ex=0n
         const totalReserves_ex=0n
         const exchangeRate_ex=calculateExchangeRate(
-            depositStxAmount,totalBorrows_ex,totalReserves_ex,mintStokenAmount_ex
+            depositXbtcAmount,totalBorrows_ex,totalReserves_ex,mintSxbtcAmount_ex
             )
-        let mintAmount = depositAndMint(chain,REGISTRY,user1.address,depositStxAmount)
-        mintAmount.expectUint(mintStokenAmount_ex)
+        let mintAmount = depositAndMint(chain,REGISTRY,user1.address,depositXbtcAmount)
+        mintAmount.expectUint(mintSxbtcAmount_ex)
         const exchangeRate=await getExchangeRate(chain,REGISTRY,user1.address)
         exchangeRate.expectUint(exchangeRate_ex)
-        const withdrawAmount_ex=(mintStokenAmount_ex*exchangeRate_ex)/SCALAR
-        let withdrawAmount = redeem(chain,REGISTRY,user1.address,mintStokenAmount_ex)
+        const withdrawAmount_ex=(mintSxbtcAmount_ex*exchangeRate_ex)/SCALAR
+        let withdrawAmount = redeem(chain,REGISTRY,user1.address,mintSxbtcAmount_ex)
         withdrawAmount.expectUint(withdrawAmount_ex)
     },
 })
@@ -83,6 +85,7 @@ Clarinet.test({
         const user1=accounts.get("wallet_1")
         if (!user1) throw new Error("user1 not found")
         const addReserveAmount=1000000n
+        mint(chain,"xbtc",user1.address,addReserveAmount)
         addReserves(chain,REGISTRY,user1.address,addReserveAmount)
         const totalReserves=await getTotalReserves(chain,REGISTRY,user1.address)
         totalReserves.expectUint(addReserveAmount)
@@ -99,22 +102,23 @@ Clarinet.test({
         const user1=accounts.get("wallet_1")
         if (!user1) throw new Error("user1 not found")
         const addReserveAmount=1000000n
+        mint(chain,"xbtc",user1.address,addReserveAmount)
         addReserves(chain,REGISTRY,user1.address,addReserveAmount)
         let totalReserves=await getTotalReserves(chain,REGISTRY,user1.address)
         totalReserves.expectUint(addReserveAmount)
         const exchangeRate_1=await getExchangeRate(chain,REGISTRY,user1.address)
         exchangeRate_1.expectUint(INITIAL_EXCHANGE_RATE_MANTISSA)
-
-        const depositStxAmount=2000000n
-        const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
+        const depositXbtcAmount=2000000n
+        mint(chain,"xbtc",user1.address,depositXbtcAmount)
+        const mintSxbtcAmount_ex=depositXbtcAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
         const totalBorrows_ex=0n
         const totalReserves_ex=addReserveAmount
-        const assetAmount=totalReserves_ex+depositStxAmount
+        const assetAmount=totalReserves_ex+depositXbtcAmount
         const exchangeRate_ex_2=calculateExchangeRate(
-            assetAmount,totalBorrows_ex,totalReserves_ex,mintStokenAmount_ex
+            assetAmount,totalBorrows_ex,totalReserves_ex,mintSxbtcAmount_ex
             )
-        let mintAmount = depositAndMint(chain,REGISTRY,user1.address,depositStxAmount)
-        mintAmount.expectUint(mintStokenAmount_ex)
+        let mintAmount = depositAndMint(chain,REGISTRY,user1.address,depositXbtcAmount)
+        mintAmount.expectUint(mintSxbtcAmount_ex)
         const cash=await getCash(chain,REGISTRY,user1.address)
         cash.expectUint(assetAmount)
         totalReserves=await getTotalReserves(chain,REGISTRY,user1.address)
@@ -132,20 +136,22 @@ Clarinet.test({
         const user1=accounts.get("wallet_1")
         if (!user1) throw new Error("user1 not found")
         const addReserveAmount=1000000n
+        mint(chain,"xbtc",user1.address,addReserveAmount)
         addReserves(chain,REGISTRY,user1.address,addReserveAmount)
         let totalReserves=await getTotalReserves(chain,REGISTRY,user1.address)
         totalReserves.expectUint(addReserveAmount)
-        const depositStxAmount=2000000n
-        const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
+        const depositXbtcAmount=2000000n
+        mint(chain,"xbtc",user1.address,depositXbtcAmount)
+        const mintSxbtcAmount_ex=depositXbtcAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
         const borrowAmount=500000n
         const totalBorrows_ex=borrowAmount
         const totalReserves_ex=addReserveAmount
-        const assetAmount=totalReserves_ex+depositStxAmount-borrowAmount
+        const assetAmount=totalReserves_ex+depositXbtcAmount-borrowAmount
         const exchangeRate_ex=calculateExchangeRate(
-            assetAmount,totalBorrows_ex,totalReserves_ex,mintStokenAmount_ex
+            assetAmount,totalBorrows_ex,totalReserves_ex,mintSxbtcAmount_ex
             )
-        let mintAmount = depositAndMint(chain,REGISTRY,user1.address,depositStxAmount)
-        mintAmount.expectUint(mintStokenAmount_ex)
+        let mintAmount = depositAndMint(chain,REGISTRY,user1.address,depositXbtcAmount)
+        mintAmount.expectUint(mintSxbtcAmount_ex)
         let borrowRes = borrow(chain,REGISTRY,user1.address,borrowAmount)
         borrowRes.expectUint(borrowAmount)
         const totalBorrow=await getTotalBorrows(chain,REGISTRY,user1.address)
@@ -163,17 +169,19 @@ Clarinet.test({
         const user1=accounts.get("wallet_1")
         if (!user1) throw new Error("user1 not found")
         const addReserveAmount=1000000n
+        mint(chain,"xbtc",user1.address,addReserveAmount)
         addReserves(chain,REGISTRY,user1.address,addReserveAmount)
         let totalReserves=await getTotalReserves(chain,REGISTRY,user1.address)
         totalReserves.expectUint(addReserveAmount)
-        const depositStxAmount=2000000n
-        const mintStokenAmount_ex=depositStxAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
+        const depositXbtcAmount=2000000n
+        mint(chain,"xbtc",user1.address,depositXbtcAmount)
+        const mintSxbtcAmount_ex=depositXbtcAmount*INITIAL_EXCHANGE_RATE_MANTISSA/SCALAR
         const borrowAmount=500000n
         const totalBorrows_ex=borrowAmount
         const totalReserves_ex=addReserveAmount
-        const assetAmount=totalReserves_ex+depositStxAmount-borrowAmount
-        let mintAmount = depositAndMint(chain,REGISTRY,user1.address,depositStxAmount)
-        mintAmount.expectUint(mintStokenAmount_ex)
+        const assetAmount=totalReserves_ex+depositXbtcAmount-borrowAmount
+        let mintAmount = depositAndMint(chain,REGISTRY,user1.address,depositXbtcAmount)
+        mintAmount.expectUint(mintSxbtcAmount_ex)
         let borrowRes = borrow(chain,REGISTRY,user1.address,borrowAmount)
         borrowRes.expectUint(borrowAmount)
         let repayBorrowRes = repayBorrow(chain,REGISTRY,user1.address,borrowAmount)

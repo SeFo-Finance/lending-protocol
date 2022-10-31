@@ -1,7 +1,7 @@
 (impl-trait .stoken-registry-trait.stoken-registry-trait)
 (use-trait ir-trait .interest-rate-trait.ir-trait)
 (use-trait scoin-trait .scoin-trait.scoin-trait)
-;; stoken
+;; sxbtc
 ;; <add a description here>
 
 ;; constants
@@ -11,19 +11,19 @@
 (define-constant reserve-factor-max-mantissa scalar)
 (define-constant initial-exchange-rate-mantissa scalar)
 (define-constant err-invalid-amount (err u101))
-(define-constant err-get-stx-balances (err u102))
-(define-constant err-get-stoken-balances (err u103))
+(define-constant err-get-xbtc-balances (err u102))
+(define-constant err-get-sxbtc-balances (err u103))
 (define-constant err-invalid-block (err u104))
 (define-constant err-balance-not-enough (err u105))
-(define-constant err-transfer-stx-fail (err u106))
+(define-constant err-transfer-xbtc-fail (err u106))
 (define-constant err-accrue-interest (err u107))
 (define-constant err-borrow-rate-overflow (err u108))
-(define-constant err-stoken-mint (err u109))
-(define-constant err-stoken-burn (err u110))
+(define-constant err-sxbtc-mint (err u109))
+(define-constant err-sxbtc-burn (err u110))
 (define-constant err-div-scalar (err u111))
 (define-constant err-set-total-reserves (err u112))
 (define-constant err-invalid-borrow-index (err u113))
-(define-constant err-get-stoken-supply (err u114))
+(define-constant err-get-sxbtc-supply (err u114))
 (define-constant err-set-account-supply (err u115))
 ;; data maps and vars
 ;;
@@ -48,7 +48,9 @@
 (define-private (get-cash-prior) 
     (let (
         (contract-address (as-contract tx-sender))
-        (contract-balance (stx-get-balance contract-address))) 
+        (contract-balance 
+            (unwrap! (contract-call? .xbtc get-balances contract-address) 
+            err-get-xbtc-balances))) 
         (ok contract-balance)))
 
 (define-private (div-scalar-by-exp-truncate (value uint)) 
@@ -65,7 +67,7 @@
 
 (define-read-only (get-borrow-rate-per-block) 
     (let (     
-        (contract-balance (unwrap! (get-cash-prior) err-get-stx-balances))
+        (contract-balance (try! (get-cash-prior)))
         (borrows (var-get total-borrows))
         (reserves (var-get total-reserves))
         ;; to-do change to ir-model 
@@ -76,7 +78,7 @@
 
 (define-read-only (get-supply-rate-per-block) 
     (let (     
-        (contract-balance (unwrap! (get-cash-prior) err-get-stx-balances))
+        (contract-balance (try! (get-cash-prior)))
         (borrows (var-get total-borrows))
         (reserves (var-get total-reserves))
         (reserve-factor (var-get reserve-factor-mantissa))
@@ -87,17 +89,17 @@
         (rate scalar)) (ok rate)))
 
 (define-read-only (get-cash) 
-    (ok (unwrap! (get-cash-prior) err-get-stx-balances)))
+    (ok (try! (get-cash-prior))))
 
 (define-read-only (get-account-snapshot (user principal)) 
     (let (
-        (stoken-balance (unwrap! 
-            (contract-call? .stoken get-balances user) 
-            err-get-stoken-balances))
+        (sxbtc-balance (unwrap! 
+            (contract-call? .sxbtc get-balances user) 
+            err-get-sxbtc-balances))
         (borrow-balance (try! (get-borrow-balance-stored user)))
         (exchange-rate (try! (get-exchange-rate-stored)))) 
         (ok {
-            stoken-balance: stoken-balance,
+            stoken-balance: sxbtc-balance,
             borrow-balance: borrow-balance,
             exchange-rate: exchange-rate 
         })))
@@ -120,9 +122,9 @@
 (define-read-only (get-exchange-rate-stored) 
     (let (
         (supply (unwrap! 
-            (contract-call? .stoken get-total-supply) 
-            err-get-stoken-supply))
-        (cash (unwrap! (get-cash-prior) err-get-stx-balances))
+            (contract-call? .sxbtc get-total-supply) 
+            err-get-sxbtc-supply))
+        (cash (try! (get-cash-prior)))
         (borrows (var-get total-borrows))
         (reserves (var-get total-reserves))
         (token-usage (- (+ cash borrows) reserves))) 
@@ -189,11 +191,11 @@
 (define-public (underlying-balances (user principal)) 
     (let (
         (exchange-rate (try! (exchange-rate-current)))
-        (stoken-balance (unwrap! 
-            (contract-call? .stoken get-balances user) 
-            err-get-stoken-balances))
+        (sxbtc-balance (unwrap! 
+            (contract-call? .sxbtc get-balances user) 
+            err-get-sxbtc-balances))
         (token-balance (unwrap! 
-            (div-scalar-by-exp-truncate (* stoken-balance exchange-rate))
+            (div-scalar-by-exp-truncate (* sxbtc-balance exchange-rate))
             err-div-scalar))) 
         (ok token-balance)))
 
@@ -207,24 +209,26 @@
             (block-accrual (var-get accrual-block))
             (block-now block-height)
             (exchange-rate (try! (get-exchange-rate-stored)))
-            (coin-balance (stx-get-balance minter))
-            (mint-stoken-amount (/ (* amount scalar) exchange-rate))
+            (coin-balance 
+                (unwrap! (contract-call? .xbtc get-balances minter)
+                err-get-xbtc-balances))
+            (mint-sxbtc-amount (/ (* amount scalar) exchange-rate))
             (supply-amount (default-to u0 (map-get? account-supply minter)))) 
             (begin 
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= coin-balance amount) err-balance-not-enough)
+                (asserts! (try!
+                    (contract-call? .xbtc transfer amount minter coin-recipient none)) 
+                    err-transfer-xbtc-fail)
                 (asserts! (try! 
-                    (stx-transfer? amount minter coin-recipient)) 
-                    err-transfer-stx-fail)
-                (asserts! (try! 
-                    (contract-call? .stoken mint-for-registry amount minter)) 
-                    err-stoken-mint)
+                    (contract-call? .sxbtc mint-for-registry amount minter)) 
+                    err-sxbtc-mint)
                 (asserts! 
                     (map-set account-supply minter (+ supply-amount amount)) 
                     err-set-account-supply)
                 (ok {
-                    stoken-amount: mint-stoken-amount,
+                    stoken-amount: mint-sxbtc-amount,
                     token-amount: amount
                 })))))
 
@@ -238,27 +242,27 @@
             (block-accrual (var-get accrual-block))
             (block-now block-height)
             (exchange-rate (try! (get-exchange-rate-stored)))
-            (stx-amount (unwrap! 
+            (xbtc-amount (unwrap! 
                 (div-scalar-by-exp-truncate (* amount exchange-rate))
                 err-div-scalar))
             (supply-amount (default-to u0 (map-get? account-supply redeemer))))
             (begin 
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
-                (asserts! (>= stx-amount u0) err-invalid-amount)
-                (asserts! (>= supply-amount stx-amount) err-invalid-amount)
+                (asserts! (>= xbtc-amount u0) err-invalid-amount)
+                (asserts! (>= supply-amount xbtc-amount) err-invalid-amount)
                 (asserts! (try! 
-                    (as-contract (stx-transfer? amount sender redeemer)))
-                    err-transfer-stx-fail))
+                    (as-contract (contract-call? .xbtc transfer amount sender redeemer none)))
+                    err-transfer-xbtc-fail))
                 (asserts! (try! 
-                    (contract-call? .stoken burn-for-registry amount redeemer)) 
-                    err-stoken-burn)
+                    (contract-call? .sxbtc burn-for-registry amount redeemer)) 
+                    err-sxbtc-burn)
                 (asserts! 
-                    (map-set account-supply redeemer (- supply-amount stx-amount)) 
+                    (map-set account-supply redeemer (- supply-amount xbtc-amount)) 
                     err-set-account-supply)
                 (ok {
                     stoken-amount: amount,
-                    token-amount: stx-amount
+                    token-amount: xbtc-amount
                 }))))
 
 (define-public (borrow (amount uint)) 
@@ -270,7 +274,7 @@
             (sender (as-contract tx-sender))
             (block-accrual (var-get accrual-block))
             (block-now block-height)
-            (contract-token-balance (unwrap! (get-cash-prior) err-get-stx-balances))
+            (contract-token-balance (try! (get-cash-prior)))
             (borrow-balance (try! (get-borrow-balance-stored borrower)))
             (total-borrow-balance (var-get total-borrows))
             (new-borrow-balance (+ borrow-balance amount))
@@ -281,8 +285,8 @@
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= contract-token-balance amount) err-balance-not-enough)
                 (asserts! (try! 
-                    (as-contract (stx-transfer? amount sender borrower)))
-                    err-transfer-stx-fail))
+                    (as-contract (contract-call? .xbtc transfer amount sender borrower none)))
+                    err-transfer-xbtc-fail))
                 (map-set account-borrows borrower {
                     balance: new-borrow-balance,
                     interest-index: borrow-i
@@ -299,7 +303,9 @@
             (recipient (as-contract tx-sender))
             (block-accrual (var-get accrual-block))
             (block-now block-height)
-            (coin-balance (stx-get-balance borrower))
+            (coin-balance 
+                (unwrap! (contract-call? .xbtc get-balances borrower)
+                err-get-xbtc-balances))
             (user-repay (try! (borrow-balance-current borrower)))
             (repay-amount (if (>= user-repay amount) amount user-repay))
             (total-borrow-balance (var-get total-borrows))
@@ -311,8 +317,8 @@
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= coin-balance repay-amount) err-balance-not-enough)
                 (asserts! (try! 
-                    (stx-transfer? repay-amount borrower recipient))
-                    err-transfer-stx-fail)
+                    (contract-call? .xbtc transfer repay-amount borrower recipient none)) 
+                    err-transfer-xbtc-fail)
                 (map-set account-borrows borrower {
                     balance: new-borrow-balance,
                     interest-index: borrow-i
@@ -330,7 +336,9 @@
             (block-accrual (var-get accrual-block))
             (block-now block-height)
             (exchange-rate (try! (get-exchange-rate-stored)))
-            (coin-balance (stx-get-balance minter))
+            (coin-balance 
+                (unwrap! (contract-call? .xbtc get-balances minter)
+                err-get-xbtc-balances))
             (reserves (var-get total-reserves))
             (new-reserves (+ reserves amount))) 
             (begin 
@@ -338,7 +346,7 @@
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= coin-balance amount) err-balance-not-enough)
                 (asserts! (try! 
-                    (stx-transfer? amount minter coin-recipient)) 
-                    err-transfer-stx-fail)
+                    (contract-call? .xbtc transfer amount minter coin-recipient none)) 
+                    err-transfer-xbtc-fail)
                 (asserts! (var-set total-reserves new-reserves) err-set-total-reserves)
                 (ok true)))))

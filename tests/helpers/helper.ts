@@ -16,12 +16,3 @@ export function getAssetBalance(chain:Chain,asset:string,user:string):bigint{
     if (!assets[asset] || !assets[asset][user]) return 0n
     return BigInt(assets[asset][user])
 }
-
-export async function getTotalSupply(
-    chain:Chain,contractAddress:string,sender:string
-    ):Promise<String>{
-    const res=await chain.callReadOnlyFn(
-        contractAddress,"get-total-supply",[],sender  
-    )
-    return res.result.expectOk()
-}
