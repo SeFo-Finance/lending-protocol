@@ -6,9 +6,13 @@
 
         ;; ctoken-user-interface
         (underlying-balances (principal) (response uint uint))
-        (get-account-snapshot (principal) (response {
-            stoken-balance: uint, borrow-balance: uint, exchange-rate: uint
-        } uint))
+        (get-account-snapshot (principal) (response 
+            {stoken-balance: uint, borrow-balance: uint, exchange-rate: uint} 
+            uint))
+        (get-user-supply (principal) (response uint uint))
+        (get-user-borrow (principal) (response 
+            {balance: uint, interest-index: uint} 
+            uint))
         (get-total-borrows () (response uint uint))
         (get-total-reserves () (response uint uint))
         (get-borrow-rate-per-block () (response uint uint))
