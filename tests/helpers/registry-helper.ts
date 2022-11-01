@@ -3,6 +3,34 @@ import { SCALAR } from '../common.ts';
 import { assertEquals } from 'https://deno.land/std@0.90.0/testing/asserts.ts';
 
 
+export interface BorrowResp{
+    balance:string
+    interestIndex:string
+}
+
+export async function getUserBorrow(
+    chain:Chain,contract:string,sender:string
+):Promise<BorrowResp>{
+    const res=await chain.callReadOnlyFn(
+        contract,"get-user-borrow",
+        [types.principal(sender)],sender
+    )
+    const tuple=res.result.expectOk().expectTuple()
+    return {
+        balance: tuple["balance"],
+        interestIndex: tuple["interest-index"]
+    }
+}
+
+export async function getBorrowIndex(
+    chain:Chain,contract:string,sender:string
+):Promise<String>{
+    const res=await chain.callReadOnlyFn(
+        contract,"get-borrow-index",[],sender
+    )
+    return res.result.expectOk()
+}
+
 export async function getTotalBorrows(
     chain:Chain,contract:string,sender:string
     ):Promise<String>{
