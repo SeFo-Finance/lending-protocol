@@ -25,6 +25,9 @@
 (define-constant err-invalid-borrow-index (err u113))
 (define-constant err-get-stoken-supply (err u114))
 (define-constant err-set-account-supply (err u115))
+(define-constant err-invalid-redeem-amount (err u116))
+(define-constant err-get-cash (err u117))
+(define-constant err-insufficient-cash (err u118))
 ;; data maps and vars
 ;;
 (define-data-var admin principal .controller-1)
@@ -82,7 +85,7 @@
 
 (define-read-only (get-borrow-rate-per-block) 
     (let (     
-        (contract-balance (unwrap! (get-cash-prior) err-get-stx-balances))
+        (contract-balance (unwrap! (get-cash-prior) err-get-cash))
         (borrows (var-get total-borrows))
         (reserves (var-get total-reserves))
         ;; to-do change to ir-model 
@@ -93,7 +96,7 @@
 
 (define-read-only (get-supply-rate-per-block) 
     (let (     
-        (contract-balance (unwrap! (get-cash-prior) err-get-stx-balances))
+        (contract-balance (unwrap! (get-cash-prior) err-get-cash))
         (borrows (var-get total-borrows))
         (reserves (var-get total-reserves))
         (reserve-factor (var-get reserve-factor-mantissa))
@@ -104,7 +107,7 @@
         (rate scalar)) (ok rate)))
 
 (define-read-only (get-cash) 
-    (ok (unwrap! (get-cash-prior) err-get-stx-balances)))
+    (ok (unwrap! (get-cash-prior) err-get-cash)))
 
 (define-read-only (get-account-snapshot (user principal)) 
     (let (
@@ -139,7 +142,7 @@
         (supply (unwrap! 
             (contract-call? .stoken get-total-supply) 
             err-get-stoken-supply))
-        (cash (unwrap! (get-cash-prior) err-get-stx-balances))
+        (cash (unwrap! (get-cash-prior) err-get-cash))
         (borrows (var-get total-borrows))
         (reserves (var-get total-reserves))
         (token-usage (- (+ cash borrows) reserves))) 
@@ -226,7 +229,7 @@
             (exchange-rate (try! (get-exchange-rate-stored)))
             (coin-balance (stx-get-balance minter))
             (mint-stoken-amount (/ (* amount scalar) exchange-rate))
-            (supply-amount (default-to u0 (map-get? account-supply minter)))) 
+            (supply-stoken-amount (default-to u0 (map-get? account-supply minter)))) 
             (begin 
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
@@ -235,10 +238,10 @@
                     (stx-transfer? amount minter coin-recipient)) 
                     err-transfer-stx-fail)
                 (asserts! (try! 
-                    (contract-call? .stoken mint-for-registry amount minter)) 
+                    (contract-call? .stoken mint-for-registry mint-stoken-amount minter)) 
                     err-stoken-mint)
                 (asserts! 
-                    (map-set account-supply minter (+ supply-amount amount)) 
+                    (map-set account-supply minter (+ supply-stoken-amount mint-stoken-amount)) 
                     err-set-account-supply)
                 (ok {
                     stoken-amount: mint-stoken-amount,
@@ -258,20 +261,22 @@
             (stx-amount (unwrap! 
                 (div-scalar-by-exp-truncate (* amount exchange-rate))
                 err-div-scalar))
-            (supply-amount (default-to u0 (map-get? account-supply redeemer))))
+            (supply-stoken-amount (default-to u0 (map-get? account-supply redeemer)))
+            (cash-amount (unwrap! (get-cash-prior) err-get-cash)))
             (begin 
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= stx-amount u0) err-invalid-amount)
-                (asserts! (>= supply-amount stx-amount) err-invalid-amount)
+                (asserts! (>= supply-stoken-amount amount) err-invalid-redeem-amount)
+                (asserts! (>= cash-amount stx-amount) err-insufficient-cash)
                 (asserts! (try! 
-                    (as-contract (stx-transfer? amount sender redeemer)))
+                    (as-contract (stx-transfer? stx-amount sender redeemer)))
                     err-transfer-stx-fail))
                 (asserts! (try! 
                     (contract-call? .stoken burn-for-registry amount redeemer)) 
                     err-stoken-burn)
                 (asserts! 
-                    (map-set account-supply redeemer (- supply-amount stx-amount)) 
+                    (map-set account-supply redeemer (- supply-stoken-amount amount)) 
                     err-set-account-supply)
                 (ok {
                     stoken-amount: amount,
@@ -287,7 +292,7 @@
             (sender (as-contract tx-sender))
             (block-accrual (var-get accrual-block))
             (block-now block-height)
-            (contract-token-balance (unwrap! (get-cash-prior) err-get-stx-balances))
+            (contract-token-balance (unwrap! (get-cash-prior) err-get-cash))
             (borrow-balance (try! (get-borrow-balance-stored borrower)))
             (total-borrow-balance (var-get total-borrows))
             (new-borrow-balance (+ borrow-balance amount))
