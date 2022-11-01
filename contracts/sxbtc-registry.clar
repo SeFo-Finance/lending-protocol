@@ -26,6 +26,8 @@
 (define-constant err-get-sxbtc-supply (err u114))
 (define-constant err-set-account-supply (err u115))
 (define-constant err-invalid-redeem-amount (err u116))
+(define-constant err-get-cash (err u117))
+(define-constant err-insufficient-cash (err u118))
 ;; data maps and vars
 ;;
 (define-data-var admin principal .controller-1)
@@ -231,7 +233,7 @@
                 (unwrap! (contract-call? .xbtc get-balances minter)
                 err-get-xbtc-balances))
             (mint-sxbtc-amount (/ (* amount scalar) exchange-rate))
-            (supply-amount (default-to u0 (map-get? account-supply minter)))) 
+            (supply-sxbtc-amount (default-to u0 (map-get? account-supply minter)))) 
             (begin 
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
@@ -243,7 +245,7 @@
                     (contract-call? .sxbtc mint-for-registry mint-sxbtc-amount minter)) 
                     err-sxbtc-mint)
                 (asserts! 
-                    (map-set account-supply minter (+ supply-amount amount)) 
+                    (map-set account-supply minter (+ supply-sxbtc-amount mint-sxbtc-amount)) 
                     err-set-account-supply)
                 (ok {
                     stoken-amount: mint-sxbtc-amount,
@@ -263,20 +265,22 @@
             (xbtc-amount (unwrap! 
                 (div-scalar-by-exp-truncate (* amount exchange-rate))
                 err-div-scalar))
-            (supply-amount (default-to u0 (map-get? account-supply redeemer))))
+            (supply-sxbtc-amount (default-to u0 (map-get? account-supply redeemer)))
+            (cash-amount (unwrap! (get-cash-prior) err-get-cash)))
             (begin 
                 (asserts! (> amount u0) err-invalid-amount)
                 (asserts! (is-eq block-now block-accrual) err-invalid-block)
                 (asserts! (>= xbtc-amount u0) err-invalid-amount)
-                (asserts! (>= supply-amount xbtc-amount) err-invalid-redeem-amount)
+                (asserts! (>= supply-sxbtc-amount amount) err-invalid-redeem-amount)
+                (asserts! (>= cash-amount xbtc-amount) err-insufficient-cash)
                 (asserts! (try! 
-                    (as-contract (contract-call? .xbtc transfer amount sender redeemer none)))
+                    (as-contract (contract-call? .xbtc transfer xbtc-amount sender redeemer none)))
                     err-transfer-xbtc-fail))
                 (asserts! (try! 
-                    (contract-call? .sxbtc burn-for-registry xbtc-amount redeemer)) 
+                    (contract-call? .sxbtc burn-for-registry amount redeemer)) 
                     err-sxbtc-burn)
                 (asserts! 
-                    (map-set account-supply redeemer (- supply-amount xbtc-amount)) 
+                    (map-set account-supply redeemer (- supply-sxbtc-amount amount)) 
                     err-set-account-supply)
                 (ok {
                     stoken-amount: amount,
