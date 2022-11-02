@@ -50,6 +50,10 @@ depends_on = []
 path = "contracts/controller-1.clar"
 depends_on = ["controller-trait", "stoken-trait", "sip-010-ft-trait","stoken-registry"]
 
+[contracts.interest-rate]
+path = "contracts/interest-rate.clar"
+depends_on = ["interest-rate-trait"]
+
 [contracts.xbtc]
 path = "contracts/xbtc.clar"
 depends_on = ["sip-010-ft-trait"]

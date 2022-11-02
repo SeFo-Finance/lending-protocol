@@ -28,6 +28,8 @@
 (define-constant err-invalid-redeem-amount (err u116))
 (define-constant err-get-cash (err u117))
 (define-constant err-insufficient-cash (err u118))
+(define-constant err-get-borrow-rate (err u119))
+(define-constant err-get-supply-rate (err u120))
 ;; data maps and vars
 ;;
 (define-data-var admin principal .controller-1)
@@ -60,6 +62,9 @@
 ;; public functions
 ;;
 
+(define-read-only (get-borrow-index)
+    (ok (var-get borrow-index)))
+
 (define-read-only (get-user-supply (user principal))
     (let (
         (supply (default-to 
@@ -89,10 +94,10 @@
         (borrows (var-get total-borrows))
         (reserves (var-get total-reserves))
         ;; to-do change to ir-model 
-        ;; (rate (unwrap! 
-        ;;     (contract-call? .ir-model get-borrow-rate contract-balance borrows reserves) 
-        ;;     (err u101)))
-        (rate u50)) (ok rate)))
+        (rate (unwrap!
+            (contract-call? .interest-rate get-borrow-rate contract-balance borrows reserves)
+            err-get-borrow-rate)))
+        (ok rate)))
 
 (define-read-only (get-supply-rate-per-block) 
     (let (     
@@ -101,10 +106,10 @@
         (reserves (var-get total-reserves))
         (reserve-factor (var-get reserve-factor-mantissa))
         ;; to-do change to ir-model 
-        ;; (rate (unwrap! 
-        ;;     (contract-call? .ir-model get-supply-rate contract-balance borrows reserves reserve-factor) 
-        ;;     (err u101)))
-        (rate scalar)) (ok rate)))
+        (rate (unwrap!
+            (contract-call? .interest-rate get-supply-rate contract-balance borrows reserves reserve-factor)
+            err-get-supply-rate)))
+        (ok rate)))
 
 (define-read-only (get-cash) 
     (ok (unwrap! (get-cash-prior) err-get-cash)))

@@ -361,7 +361,7 @@ export const transferAllowed = async (
 export const getMarket = async (
   chain: Chain,
   sender: string,
-  stoken: principal,
+  stoken: string,
 ): Promise<String> => {
   const block = chain.mineBlock([
     Tx.contractCall(CONTROLLER_CONTRACT, 'get-market', [types.principal(stoken)], sender)
@@ -423,7 +423,7 @@ export const setLiquidationIncentive = async (
 export const supportMarket = async (
   chain: Chain,
   sender: string,
-  stoken: principal,
+  stoken: string,
 ): Promise<String> => {
   const block = chain.mineBlock([
     Tx.contractCall(CONTROLLER_CONTRACT, 'support-market', [types.principal(stoken)], sender)
@@ -435,7 +435,7 @@ export const supportMarket = async (
 export const enterMarkets = async (
   chain: Chain,
   sender: string,
-  stokens: principal[],
+  stokens: string[],
 ): Promise<String> => {
   const block = chain.mineBlock([
     Tx.contractCall(CONTROLLER_CONTRACT, 'enter-markets', [types.list(stokens.map((val) => types.principal(val)))], sender)
